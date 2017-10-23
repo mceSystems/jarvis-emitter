@@ -4,7 +4,7 @@
   "description": "Jarvis Emitter",
   "main": "index.js",
   "scripts": {
-	  "test": "mocha"
+    "test": "mocha"
   },
   "author": "mce",
   "dependencies": {
@@ -14,5 +14,9 @@
   "devDependencies": {
     "chai": "^4.1.2",
     "mocha": "^4.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mceSystems/jarvis-emitter"
   }
 }
