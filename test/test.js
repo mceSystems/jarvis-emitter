@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const JarvisEmmiter = require("../");
 
 describe("Native interface 'done'", () => {
-	it("should resolve 'done' interface, syncronously, with a constant value hello 'hello'", () => {
+	it("should resolve 'done' interface, syncronously, with a constant value 'hello'", () => {
 		const emitter = new JarvisEmmiter();
 		emitter.done((hello) => {
 			expect(hello).to.equal("hello")
@@ -81,4 +81,24 @@ describe("Native interface 'catch'", () => {
 			emitter.callDone("hello");
 		}, 500);
 	});
+});
+
+describe("Static function some", () => {
+	it("should return resolved and rejected promises results in array", (done) =>{
+		const errorIdx = 0;
+		const successIdx = 1;
+		const errorPromise = new JarvisEmmiter().callError("error");
+		const successPromise = new JarvisEmmiter().callDone("success");
+		
+		JarvisEmmiter.some(errorPromise, successPromise)
+			.done((results) => {
+				if ( undefined === results[errorIdx] && "success" === results[successIdx]) {
+					done();
+				}
+				else {
+					done(new Error(`Expected to get results array of [undefined, "success"] and got: ${JSON.stringify(results)}`));
+				}
+				
+			})
+	})
 });

@@ -153,7 +153,7 @@ class JarvisEmitter {
 				stickyCalls = [];
 			}
 
-			const reolsvePromise = (...resolveArgs) => {
+			const resolvePromise = (...resolveArgs) => {
 				try {
 					for (const j in callbackArray) {
 						callbackArray[j](...resolveArgs);
@@ -209,7 +209,7 @@ class JarvisEmitter {
 				if (stickyCalls) {
 					stickyCalls.push(args);
 				}
-				executeMiddlewares(middlewareArray, reolsvePromise, ...args);
+				executeMiddlewares(middlewareArray, resolvePromise, ...args);
 				return this;
 			};
 			this[middleware] = (cb) => {
@@ -342,6 +342,44 @@ class JarvisEmitter {
 		}
 		return promise;
 	}
+
+	/**
+	 * Gets array of emitters and resolves (emits done) with array of emitted done and error values, 
+	 * respective of the order of the emitters argument
+	 * If the emitter was resolved (done emitted) the returned array in the original emitter index will contain the result.
+	 * If it was rejected (error emitted) will contain undefined in the emitter index.
+	 * @param {JarvisEmitter...} emitters The emitters to wait for on their done/error events
+	 * @return {JarvisEmitter} An emitter on which the done event is emitted once all emitters emitted done/error
+	 */
+	static some(...args) {
+		const emitter = new JarvisEmitter();
+		const results = [];
+		let receivedResults = 0;
+		if (0 === args.length) {
+			emitter.callDone([]);
+		} else {
+			for (const emitterIdx in args) {
+				const em = args[emitterIdx];
+				em
+					.done((result) => {
+						results[emitterIdx] = result;
+						receivedResults++;
+						if (receivedResults === args.length) {
+							emitter.callDone(results);
+						}
+					})
+					.error(() => {
+						results[emitterIdx] = undefined;
+						receivedResults++;
+						if (receivedResults === args.length) {
+							emitter.callDone(results);
+						}
+					});
+			}
+		}
+		return emitter;
+	}
+
 
 	static immediate(result, role = JarvisEmitter.role.done, name = "done") {
 		const promise = new JarvisEmitter();
