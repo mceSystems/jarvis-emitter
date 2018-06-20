@@ -170,7 +170,17 @@ class JarvisEmitter {
 				callbackArray.push(cb);
 				if (stickyCalls) {
 					for (const args of stickyCalls) {
-						executeMiddlewares(middlewareArray, cb, ...args);
+						try {
+							executeMiddlewares(middlewareArray, cb, ...args);
+						} catch (e) {
+							if ("catch" === property.name) {
+								unhandledExceptionCallbacks.forEach((cb) => {
+									cb(e);
+								});
+							} else {
+								this.callCatch.call(null, e);
+							}
+						}
 					}
 				}
 				return this;
@@ -209,7 +219,19 @@ class JarvisEmitter {
 				if (stickyCalls) {
 					stickyCalls.push(args);
 				}
-				executeMiddlewares(middlewareArray, resolvePromise, ...args);
+
+				try {
+					executeMiddlewares(middlewareArray, resolvePromise, ...args);
+				} catch (e) {
+					if ("catch" === property.name) {
+						unhandledExceptionCallbacks.forEach((cb) => {
+							cb(e);
+						});
+					} else {
+						this.callCatch.call(null, e);
+					}
+				}
+
 				return this;
 			};
 			this[middleware] = (cb) => {
