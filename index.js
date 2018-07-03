@@ -42,14 +42,35 @@ function executeMiddlewares(middlwareArray, cb, ...initsArgs) {
 }
 
 const unhandledExceptionCallbacks = [];
-const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName"];
-class JarvisEmitter {
+const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName", "then"];
+let tmpResolve = null;
+let tmpReject = null;
+class JarvisEmitter extends Promise {
 	/**
 	 *
 	 * @param interfaceDescriptor
 	 * @constructor
 	 */
 	constructor(interfaceDescriptor = []) {
+		// if interfaceDescriptor is a function, it means the constructor was called as part of promise chaining
+		super(typeof interfaceDescriptor == "function" ? interfaceDescriptor : (resolve, reject) => {
+			tmpResolve = resolve;
+			tmpReject = reject;
+		});
+		// we're hacking our way around promise inheritance:
+		// as javascript is single threaded, and super call is synchronous
+		// we can rely on the global tmpResolve and tmpReject be assigned only if our super was just called
+		// after that, we nullify them, so next constructor call can do the same 
+		if (tmpResolve || tmpReject) {
+			this.__resolve = this.__resolve || tmpResolve;
+			this.__reject = this.__reject || tmpReject;
+			tmpResolve = null;
+			tmpReject = null;
+		} else {
+			// reaching here means we're chained - do not extend the instance
+			return;
+		}
+
 		this._allowedRoles = [];
 		// promise interfaces handlers by role
 		this._roleMap = {};
@@ -114,6 +135,27 @@ class JarvisEmitter {
 
 		this._allowedRoles.splice(this._allowedRoles.indexOf(JarvisEmitter.role.done), 1);
 		this._allowedRoles.splice(this._allowedRoles.indexOf(JarvisEmitter.role.catchException), 1);
+		this.__pipeToPromise();
+	}
+	__pipeToPromise() {
+		this.done((...args) => {
+			if(!this.__resolve){
+				return;
+			}
+			this.__resolve(...args);
+		});
+		this.error((...args) => {
+			if(!this.__reject){
+				return;
+			}
+			this.__reject(...args);
+		});
+		this.catch((...args) => {
+			if(!this.__reject){
+				return;
+			}
+			this.__reject(...args);
+		});
 	}
 
 	/**
