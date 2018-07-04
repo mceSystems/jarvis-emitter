@@ -1,6 +1,6 @@
 {
   "name": "jarvis-emitter",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Jarvis Emitter",
   "main": "index.js",
   "scripts": {

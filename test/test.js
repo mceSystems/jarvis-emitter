@@ -84,11 +84,11 @@ describe("Native interface 'catch'", () => {
 });
 
 describe("Promise usage", () => {
-	it("shouldn't let user extends a 'then' interface", () => {
+	it("shouldn't let user extends a 'promise' interface", () => {
 		expect(() => {
 			new JarvisEmitter([
 				JarvisEmitter.interfaceProperty()
-					.name("then")
+					.name("promise")
 					.description("bad interface name")
 					.role(JarvisEmitter.role.event)
 					.build(),
@@ -100,14 +100,14 @@ describe("Promise usage", () => {
 		setTimeout(() => {
 			emitter.callDone();
 		});
-		return emitter;
+		return emitter.promise();
 	});
 	it("should resolve the emitter on callDone, and check value", () => {
 		const emitter = new JarvisEmitter();
 		setTimeout(() => {
 			emitter.callDone("test");
 		});
-		return emitter.then((result) => {
+		return emitter.promise().then((result) => {
 			expect(result).to.eql("test");
 		});
 	});
@@ -116,28 +116,28 @@ describe("Promise usage", () => {
 		setTimeout(() => {
 			emitter.callError();
 		});
-		return emitter.then(() => Promise.reject(), () => Promise.resolve())
+		return emitter.promise().then(() => Promise.reject(), () => Promise.resolve())
 	});
 	it("should reject the emitter on callError, with expected error", () => {
 		const emitter = new JarvisEmitter();
 		setTimeout(() => {
 			emitter.callError("test");
 		});
-		return emitter.then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
+		return emitter.promise().then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
 	});
 	it("should reject the emitter on exception", () => {
 		const emitter = new JarvisEmitter();
 		setTimeout(() => {
 			emitter.callCatch();
 		});
-		return emitter.then((arg) => Promise.reject(), () => Promise.resolve())
+		return emitter.promise().then(() => Promise.reject(), () => Promise.resolve())
 	});
 	it("should reject the emitter on exception, with expected error", () => {
 		const emitter = new JarvisEmitter();
 		setTimeout(() => {
 			emitter.callCatch("test");
 		});
-		return emitter.then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
+		return emitter.promise().then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
 	});
 });
 
