@@ -61,7 +61,7 @@ describe("Native interface 'catch'", () => {
 		})
 		emitter.callDone("hello");
 	});
-	it("should catch thrown exception asyncronously", (done) => {
+	it("should catch thrown exception asynchronously", (done) => {
 		const emitter = new JarvisEmitter();
 		const errMessage = "test exception message";
 
@@ -80,6 +80,64 @@ describe("Native interface 'catch'", () => {
 			})
 			emitter.callDone("hello");
 		}, 500);
+	});
+});
+
+describe("Promise usage", () => {
+	it("shouldn't let user extends a 'promise' interface", () => {
+		expect(() => {
+			new JarvisEmitter([
+				JarvisEmitter.interfaceProperty()
+					.name("promise")
+					.description("bad interface name")
+					.role(JarvisEmitter.role.event)
+					.build(),
+			])
+		}).to.throw();
+	});
+	it("should resolve the emitter on callDone", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callDone();
+		});
+		return emitter.promise();
+	});
+	it("should resolve the emitter on callDone, and check value", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callDone("test");
+		});
+		return emitter.promise().then((result) => {
+			expect(result).to.eql("test");
+		});
+	});
+	it("should reject the emitter on callError", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callError();
+		});
+		return emitter.promise().then(() => Promise.reject(), () => Promise.resolve())
+	});
+	it("should reject the emitter on callError, with expected error", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callError("test");
+		});
+		return emitter.promise().then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
+	});
+	it("should reject the emitter on exception", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callCatch();
+		});
+		return emitter.promise().then(() => Promise.reject(), () => Promise.resolve())
+	});
+	it("should reject the emitter on exception, with expected error", () => {
+		const emitter = new JarvisEmitter();
+		setTimeout(() => {
+			emitter.callCatch("test");
+		});
+		return emitter.promise().then(() => Promise.reject(), (err) => expect(err).to.eql("test") && Promise.resolve())
 	});
 });
 

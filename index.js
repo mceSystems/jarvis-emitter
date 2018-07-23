@@ -42,7 +42,9 @@ function executeMiddlewares(middlwareArray, cb, ...initsArgs) {
 }
 
 const unhandledExceptionCallbacks = [];
-const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName"];
+const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName", "promise"];
+let tmpResolve = null;
+let tmpReject = null;
 class JarvisEmitter {
 	/**
 	 *
@@ -321,6 +323,19 @@ class JarvisEmitter {
 		return this._nameMap[name];
 	}
 
+	promise(){
+		return new Promise((resolve, reject) => {
+			this.done((...args) => {
+				resolve(...args)				
+			});
+			this.error((...args) => {
+				reject(...args);
+			});
+			this.catch((...args) => {
+				reject(...args);
+			});
+		});
+	}
 	/**
 	 *
 	 * @returns {JarvisEmitterInterfaceBuilder}
