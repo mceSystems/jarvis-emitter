@@ -1,6 +1,6 @@
 {
 	"name": "jarvis-emitter",
-	"version": "2.0.1",
+	"version": "2.0.2",
 	"description": "Jarvis Emitter",
 	"main": "index",
 	"typings": "index",
@@ -15,7 +15,8 @@
 	"devDependencies": {
 		"@types/mocha": "^5.2.5",
 		"chai": "^4.1.2",
-		"mocha": "^5.2.0"
+		"mocha": "^5.2.0",
+		"typescript": "^3.2.4"
 	},
 	"repository": {
 		"type": "git",

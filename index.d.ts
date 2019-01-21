@@ -12,6 +12,8 @@ export interface Property<Name extends string, Value = any> {
 	emittedType?: Value;
 }
 
+type Omit<T, K> = { [key in Exclude<keyof T, K>]: T[key] };
+
 interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 	done: DoneType;
 	error: ErrorType;
@@ -24,7 +26,16 @@ interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 type Registerer<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
 type Resolver<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (arg: Interfaces[K]) => J;
 type Remover<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
-type Middleware<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
+type Middleware<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = <ChangedArg extends any>(listener: (next: (arg: ChangedArg) => void, arg: Interfaces[K]) => void) =>
+	JarvisEmitter<
+		K extends "done" ?
+		ChangedArg :
+		Interfaces extends DefaultInterfaces ? Interfaces["done"] : void,
+		K extends "error" ?
+		ChangedArg :
+		Interfaces extends DefaultInterfaces ? Interfaces["error"] : void,
+		Omit<Interfaces, K> & { [key in K]: ChangedArg }
+	>;
 
 interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> {
 	registerer: Registerer<Interfaces, K, J>;
@@ -41,7 +52,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 		[key in keyof Interfaces]: Registerer<Interfaces, key, JarvisEmitter<DoneType, ErrorType, Interfaces>>
 	};
 	call: {
-		[key in keyof Interfaces]: Resolver<Interfaces, key>
+		[key in keyof Interfaces]: Resolver<Interfaces, key, JarvisEmitter<DoneType, ErrorType, Interfaces>>
 	};
 	off: {
 		[key in keyof Interfaces]: Remover<Interfaces, key, JarvisEmitter<DoneType, ErrorType, Interfaces>>
