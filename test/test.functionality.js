@@ -2,14 +2,14 @@ const { expect } = require("chai");
 const JarvisEmitter = require("../");
 
 describe("Native interface 'done'", () => {
-	it("should resolve 'done' interface, syncronously, with a constant value 'hello'", () => {
+	it("should resolve 'done' interface, synchronously, with a constant value 'hello'", () => {
 		const emitter = new JarvisEmitter();
 		emitter.done((hello) => {
 			expect(hello).to.equal("hello")
 		});
 		emitter.callDone("hello");
 	});
-	it("should resolve 'done' interface, asyncronously, with a constant value 'hello'", (done) => {
+	it("should resolve 'done' interface, asynchronously, with a constant value 'hello'", (done) => {
 		const emitter = new JarvisEmitter();
 		emitter.done((hello) => {
 			try {
@@ -24,18 +24,64 @@ describe("Native interface 'done'", () => {
 			emitter.callDone("hello");
 		}, 500)
 	});
-	it("should resolve 'done' interface, syncronously, with a constant value 'hello', in a sticky way", () => {
+	it("should resolve 'done' interface, synchronously, with a constant value 'hello', in a sticky way", () => {
 		const emitter = new JarvisEmitter();
 		emitter.callDone("hello");
 		emitter.done((hello) => {
 			expect(hello).to.equal("hello");
 		});
 	});
-	it("should resolve 'done' interface, asyncronously, with a constant value 'hello', in a sticky way", (done) => {
+	it("should resolve 'done' interface, asynchronously, with a constant value 'hello', in a sticky way", (done) => {
 		const emitter = new JarvisEmitter();
 		emitter.callDone("hello");
 		setTimeout(() => {
 			emitter.done((hello) => {
+				try {
+					expect(hello).to.equal("hello");
+				} catch (e) {
+					return done(e);
+				}
+				done();
+			});
+		}, 500)
+	});
+});
+
+describe("Native interface 'done' with call, on, off and middleware properties", () => {
+	it("should resolve 'done' interface, synchronously, with a constant value 'hello'", () => {
+		const emitter = new JarvisEmitter();
+		emitter.on.done((hello) => {
+			expect(hello).to.equal("hello")
+		});
+		emitter.call.done("hello");
+	});
+	it("should resolve 'done' interface, asynchronously, with a constant value 'hello'", (done) => {
+		const emitter = new JarvisEmitter();
+		emitter.on.done((hello) => {
+			try {
+				expect(hello).to.equal("hello");
+			} catch (e) {
+				return done(e);
+			}
+			done();
+		});
+
+		setTimeout(() => {
+			emitter.call.done("hello");
+		}, 500)
+	});
+	it("should resolve 'done' interface, synchronously, with a constant value 'hello', in a sticky way", () => {
+		const emitter = new JarvisEmitter();
+		emitter.call.done("hello");
+		emitter.on.done((hello) => {
+			expect(hello).to.equal("hello");
+		});
+	});
+	it("should resolve 'done' interface, asynchronously, with a constant value 'hello', in a sticky way", (done) => {
+		const emitter = new JarvisEmitter();
+		emitter.call.done("hello");
+		setTimeout(() => {
+			emitter.on.done((hello) => {
 				try {
 					expect(hello).to.equal("hello");
 				} catch (e) {
@@ -85,15 +131,14 @@ describe("Native interface 'catch'", () => {
 
 describe("Promise usage", () => {
 	it("shouldn't let user extends a 'promise' interface", () => {
-		expect(() => {
-			new JarvisEmitter([
-				JarvisEmitter.interfaceProperty()
-					.name("promise")
-					.description("bad interface name")
-					.role(JarvisEmitter.role.event)
-					.build(),
-			])
-		}).to.throw();
+		let emitter = new JarvisEmitter([
+			JarvisEmitter.interfaceProperty()
+				.name("promise")
+				.description("bad interface name")
+				.role(JarvisEmitter.role.event)
+				.build(),
+		]);
+		expect(emitter.callPromise).to.be.undefined
 	});
 	it("should resolve the emitter on callDone", () => {
 		const emitter = new JarvisEmitter();
@@ -176,6 +221,18 @@ describe("Middlewares", () => {
 				done();
 			})
 		});
+		it("should invoke 'catch' handler if an exception is thrown in a middleware, using middleware and call properties", (done) => {
+			const emitter = new JarvisEmitter();
+			setTimeout(() => {
+				emitter.call.done();
+			})
+
+			emitter.middleware.done(() => {
+				throw new Error();
+			}).catch(() => {
+				done();
+			})
+		});
 		it("should invoke 'catch' handler if an exception is thrown in a sticky middleware", (done) => {
 			const emitter = new JarvisEmitter();
 
@@ -236,6 +293,96 @@ describe("Middlewares", () => {
 				.done(() => {
 					throw new Error();
 				});
+		});
+	});
+});
+
+describe("Extensions", () => {
+	describe("Using dynamic properties", () => {
+		it("should have 'test' handlers", () => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+			expect(emitter.test).to.not.be.undefined;
+			expect(emitter.callTest).to.not.be.undefined;
+			expect(emitter.offTest).to.not.be.undefined;
+			expect(emitter.middlewareTest).to.not.be.undefined;
+		});
+		it("should invoke 'test' handler", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+			setTimeout(() => {
+				emitter.callTest();
+			})
+
+			emitter.test(() => {
+				done()
+			})
+		});
+		it("should invoke 'test' handler with passed value", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+			setTimeout(() => {
+				emitter.callTest("hello");
+			})
+
+			emitter.test((a) => {
+				try {
+					expect(a).to.eq("hello");
+					done();
+				} catch (e) {
+					done(e)
+				}
+			})
+		});
+	});
+	describe("Using on, off and call properties", () => {
+		it("should have 'test' handlers", () => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+			expect(emitter.on.test).to.not.be.undefined;
+			expect(emitter.call.test).to.not.be.undefined;
+			expect(emitter.off.test).to.not.be.undefined;
+			expect(emitter.middleware.test).to.not.be.undefined;
+		});
+		it("should invoke 'test' handler", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+
+			setTimeout(() => {
+				emitter.call.test();
+			})
+
+			emitter.on.test(() => {
+				done()
+			})
+		});
+		it("should invoke 'test' handler with passed value", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event
+			});
+			setTimeout(() => {
+				emitter.call.test("hello");
+			})
+
+			emitter.on.test((a) => {
+				try {
+					expect(a).to.eq("hello");
+					done();
+				} catch (e) {
+					done(e)
+				}
+			})
 		});
 	});
 });

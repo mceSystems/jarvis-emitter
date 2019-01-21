@@ -42,9 +42,7 @@ function executeMiddlewares(middlwareArray, cb, ...initsArgs) {
 }
 
 const unhandledExceptionCallbacks = [];
-const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName", "promise"];
-let tmpResolve = null;
-let tmpReject = null;
+const reservedInterfaceNames = ["pipe", "extend", "getRolesHandlers", "getHandlersForName", "promise", "on", "off", "middleware", "call"];
 class JarvisEmitter {
 	/**
 	 *
@@ -52,6 +50,10 @@ class JarvisEmitter {
 	 * @constructor
 	 */
 	constructor(interfaceDescriptor = []) {
+		this.on = {};
+		this.off = {};
+		this.call = {};
+		this.middleware = {};
 		this._allowedRoles = [];
 		// promise interfaces handlers by role
 		this._roleMap = {};
@@ -132,13 +134,6 @@ class JarvisEmitter {
 			if (undefined === property.name) {
 				continue;
 			}
-			// reserved for promise piping
-			if (-1 !== reservedInterfaceNames.indexOf(property.name)) {
-				throw new Error(`Property names "${property.name}" is not allowed`);
-			}
-			if (undefined === property.description) {
-				continue;
-			}
 			if (undefined === property.role && -1 !== this._allowedRoles.indexOf(property.role)) {
 				continue;
 			}
@@ -168,7 +163,7 @@ class JarvisEmitter {
 				}
 			};
 
-			this[registerer] = (cb) => {
+			const registererCb = (cb) => {
 				callbackArray.push(cb);
 				if (stickyCalls) {
 					for (const args of stickyCalls) {
@@ -187,7 +182,7 @@ class JarvisEmitter {
 				}
 				return this;
 			};
-			this[remover] = (cb) => {
+			const removerCb = (cb) => {
 				if (!cb) {
 					callbackArray.splice(0, callbackArray.length);
 					return;
@@ -199,7 +194,7 @@ class JarvisEmitter {
 				}
 				return this;
 			};
-			this[resolver] = (...args) => {
+			const resolverCb = (...args) => {
 				if (!callbackArray.length) {
 					const stack = new Error().stack;
 					if ("error" === property.name) {
@@ -236,19 +231,37 @@ class JarvisEmitter {
 
 				return this;
 			};
-			this[middleware] = (cb) => {
+			const middlewareCb = (cb) => {
 				middlewareArray.push(cb);
 				return this;
 			};
-			this[registerer].resolver = this[resolver];
-			this[registerer].remover = this[remover];
-			this[registerer].middleware = this[middleware];
+
+			registererCb.resolver = resolverCb;
+			registererCb.remover = removerCb;
+			registererCb.middleware = middlewareCb;
+
+			this.on[registerer] = registererCb;
+			this.call[registerer] = resolverCb;
+			this.off[registerer] = removerCb;
+			this.middleware[registerer] = middlewareCb;
+
+			// reserved for promise piping
+			if (-1 === reservedInterfaceNames.indexOf(property.name)) {
+				this[registerer] = registererCb;
+				this[remover] = removerCb;
+				this[resolver] = resolverCb;
+				this[middleware] = middlewareCb
+			}
+
+
+
 			// keep a reference of the new set of functions
 			// so the outside user can get a list of functions by role
 			const mapsEntry = {
-				registerer: this[registerer],
-				resolver: this[resolver],
-				remover: this[remover],
+				registerer: registererCb,
+				resolver: resolverCb,
+				remover: removerCb,
+				middleware: middlewareCb,
 				name: registerer,
 				role: property.role,
 			};
@@ -323,10 +336,10 @@ class JarvisEmitter {
 		return this._nameMap[name];
 	}
 
-	promise(){
+	promise() {
 		return new Promise((resolve, reject) => {
 			this.done((...args) => {
-				resolve(...args)				
+				resolve(...args)
 			});
 			this.error((...args) => {
 				reject(...args);
