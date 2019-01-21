@@ -22,13 +22,13 @@ interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 }
 
 type Registerer<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
-type Resolver<Interfaces, K extends keyof Interfaces> = (listener: (arg: Interfaces[K]) => void) => void;
+type Resolver<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (arg: Interfaces[K]) => J;
 type Remover<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
 type Middleware<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
 
 interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> {
 	registerer: Registerer<Interfaces, K, J>;
-	resolver: Resolver<Interfaces, K>;
+	resolver: Resolver<Interfaces, K, J>;
 	remover: Remover<Interfaces, K, J>;
 	middleware: Middleware<Interfaces, K, J>;
 	name: K;
