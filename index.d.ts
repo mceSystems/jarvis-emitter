@@ -68,7 +68,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	pipe<T extends JarvisEmitter>(emitter: T): T;
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
-	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<J[number]["__interfacesTypeHelper"]["done"], J[number]["__interfacesTypeHelper"]["error"]>
+	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<J[number]["__interfacesTypeHelper"]["done"][], J[number]["__interfacesTypeHelper"]["error"]>
 
 }
 
