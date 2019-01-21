@@ -14,7 +14,7 @@ export interface Property<Name extends string, Value = any> {
 
 type Omit<T, K> = { [key in Exclude<keyof T, K>]: T[key] };
 
-interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
+export interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 	done: DoneType;
 	error: ErrorType;
 	catch: Error;
@@ -47,6 +47,9 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends Jarvi
 }
 
 declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = DefaultInterfaces<DoneType, ErrorType>> {
+	__interfacesTypeHelper: {
+		[key in keyof Interfaces]: Interfaces[key];
+	};
 	constructor();
 	on: {
 		[key in keyof Interfaces]: Registerer<Interfaces, key, JarvisEmitter<DoneType, ErrorType, Interfaces>>
@@ -65,6 +68,8 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	pipe<T extends JarvisEmitter>(emitter: T): T;
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
+	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<J[number]["__interfacesTypeHelper"]["done"], J[number]["__interfacesTypeHelper"]["error"]>
+
 }
 
 export default JarvisEmitter;
