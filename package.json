@@ -5,10 +5,7 @@
 	"main": "index",
 	"typings": "index",
 	"scripts": {
-		"test": "mocha test/test.functionality.js",
-		"dev": "tsc --watch",
-		"build": "tsc",
-		"prepack": "npm run build"
+		"test": "mocha test/test.functionality.js"
 	},
 	"author": "mce",
 	"dependencies": {
@@ -18,8 +15,7 @@
 	"devDependencies": {
 		"@types/mocha": "^5.2.5",
 		"chai": "^4.1.2",
-		"mocha": "^5.2.0",
-		"typescript": "^3.2.4"
+		"mocha": "^5.2.0"
 	},
 	"repository": {
 		"type": "git",
