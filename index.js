@@ -468,4 +468,11 @@ class JarvisEmitter {
 	}
 }
 
+JarvisEmitter.Role = {
+	done: "done",
+	catchException: "catch",
+	notify: "notify",
+	event: "event",
+};
+
 module.exports = JarvisEmitter;
