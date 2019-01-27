@@ -62,7 +62,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	};
 	extend<K extends string, V extends any, T extends Property<K, V>>(interfaceProps: T): JarvisEmitter<DoneType, ErrorType, Interfaces & { [key in T["name"]]: T["emittedType"] }>;
 	promise(): Promise<DoneType>;
-	pipe<T extends JarvisEmitter>(emitter: T): T;
+	pipe<T extends JarvisEmitter<any,any,any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
 	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<Array<J[number] extends JarvisEmitter<infer D> ? D : void>, J[number] extends JarvisEmitter<any, infer E> ? E : Error>;
