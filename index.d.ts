@@ -66,7 +66,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
 	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<Array<J[number] extends JarvisEmitter<infer D> ? D : void>, J[number] extends JarvisEmitter<any, infer E> ? E : Error>;
-
+	static emitifyFromAsync<I extends any[], O>(fn: (...args: I) => Promise<O>): (...callArgs: I) => JarvisEmitter<O, any>;
 }
 
 export default JarvisEmitter;

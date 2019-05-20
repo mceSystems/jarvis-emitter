@@ -5,7 +5,6 @@ class JarvisEmitterInterfaceBuilder {
 		this.object = {};
 	}
 
-
 	name(name) {
 		this.object.name = name;
 		return this;
@@ -15,10 +14,12 @@ class JarvisEmitterInterfaceBuilder {
 		this.object.role = role;
 		return this;
 	}
+
 	sticky(sticky) {
 		this.object.sticky = sticky;
 		return this;
 	}
+
 	description(description) {
 		this.object.description = description;
 		return this;
@@ -27,12 +28,12 @@ class JarvisEmitterInterfaceBuilder {
 	build() {
 		return this.object;
 	}
-
 }
-function executeMiddlewares(middlwareArray, cb, ...initsArgs) {
+
+function executeMiddlewares(middlewareArray, cb, ...initsArgs) {
 	let idx = 0;
 	const _executeMiddleware = (...args) => {
-		const mid = middlwareArray[idx++];
+		const mid = middlewareArray[idx++];
 		if (!mid) {
 			return cb(...args);
 		}
@@ -253,8 +254,6 @@ class JarvisEmitter {
 				this[middleware] = middlewareCb
 			}
 
-
-
 			// keep a reference of the new set of functions
 			// so the outside user can get a list of functions by role
 			const mapsEntry = {
@@ -276,6 +275,7 @@ class JarvisEmitter {
 		}
 		return this;
 	}
+
 	/**
 	 * Pipes all interface properties handlers to the given promise instance.
 	 * @param {JarvisEmitter} pipedPromise
@@ -299,6 +299,7 @@ class JarvisEmitter {
 		}
 		return this;
 	}
+
 	/**
 	 * Returns and array of objects, each with the registerer functions
 	 * 		and the resolver function of the specified role.
@@ -308,7 +309,7 @@ class JarvisEmitter {
 	 * 		are only the handlers defined on top of the defaults.
 	 * if defaultsOnly is not defined, the returned objects in the array
 	 * 		are all role handlers (default and over-the-top).
-	 * @param {number} role one of JarvisEmitter.role
+	 * @param {string} role one of JarvisEmitter.role
 	 * @param {boolean} defaultsOnly
 	 * @returns {*|Array}
 	 */
@@ -349,6 +350,7 @@ class JarvisEmitter {
 			});
 		});
 	}
+
 	/**
 	 *
 	 * @returns {JarvisEmitterInterfaceBuilder}
@@ -359,7 +361,7 @@ class JarvisEmitter {
 
 	/**
 	 *
-	 * @returns {{done: number, start: number, catchException: number, notify: number, event: number}}
+	 * @returns {{done: string, start: string, catchException: string, notify: string, event: string}}
 	 */
 	static get role() {
 		return {
@@ -370,6 +372,7 @@ class JarvisEmitter {
 			event: "event",
 		};
 	}
+
 	static all(...args) {
 		const promise = new JarvisEmitter();
 		const results = [];
@@ -394,7 +397,7 @@ class JarvisEmitter {
 	}
 
 	/**
-	 * Gets array of emitters and resolves (emits done) with array of emitted done and error values, 
+	 * Gets array of emitters and resolves (emits done) with array of emitted done and error values,
 	 * respective of the order of the emitters argument
 	 * If the emitter was resolved (done emitted) the returned array in the original emitter index will contain the result.
 	 * If it was rejected (error emitted) will contain undefined in the emitter index.
@@ -457,9 +460,26 @@ class JarvisEmitter {
 		};
 	}
 
+	static emitifyFromAsync(fn) {
+		return (...callArgs) => {
+			const promise = new JarvisEmitter();
+
+			fn(...callArgs)
+				.then((thenResult) => {
+					promise.callDone(thenResult);
+				})
+				.catch((catchResult) => {
+					promise.callError(catchResult);
+				});
+
+			return promise;
+		}
+	}
+
 	static onUnhandledException(cb) {
 		unhandledExceptionCallbacks.push(cb);
 	}
+
 	static offUnhandledException(cb) {
 		const idx = unhandledExceptionCallbacks.indexOf(cb);
 		if (idx !== -1) {
