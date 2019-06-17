@@ -25,7 +25,7 @@ export interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 
 type Registerer<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
 type Resolver<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (arg: Interfaces[K]) => J;
-type Remover<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
+type Remover<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener?: (arg: Interfaces[K]) => void) => J;
 type Middleware<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = <ChangedArg extends any>(listener: (next: (arg: ChangedArg) => void, arg: Interfaces[K]) => void) =>
 	JarvisEmitter<
 		K extends "done" ?
