@@ -44,6 +44,7 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends Jarvi
 	middleware: Middleware<Interfaces, K, J>;
 	name: K;
 	role: Role;
+	purge: Function;
 }
 
 declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = DefaultInterfaces<DoneType, ErrorType>> {
@@ -62,7 +63,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	};
 	extend<K extends string, V extends any, T extends Property<K, V>>(interfaceProps: T): JarvisEmitter<DoneType, ErrorType, Interfaces & { [key in T["name"]]: T["emittedType"] }>;
 	promise(): Promise<DoneType>;
-	pipe<T extends JarvisEmitter<any,any,any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
+	pipe<T extends JarvisEmitter<any, any, any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
 	destroy();
