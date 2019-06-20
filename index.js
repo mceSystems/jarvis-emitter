@@ -31,6 +31,10 @@ class JarvisEmitterInterfaceBuilder {
 }
 
 function executeMiddlewares(middlewareArray, cb, ...initsArgs) {
+	if (0 === middlewareArray.length) {
+		cb(...initsArgs);
+		return;
+	}
 	let idx = 0;
 	const _executeMiddleware = (...args) => {
 		const mid = middlewareArray[idx++];
@@ -51,6 +55,7 @@ class JarvisEmitter {
 	 * @constructor
 	 */
 	constructor(interfaceDescriptor = []) {
+		this.destroyed = false;
 		this.on = {};
 		this.off = {};
 		this.call = {};
@@ -139,32 +144,33 @@ class JarvisEmitter {
 				continue;
 			}
 			const registerer = property.name;
-			const pascalCase = `${registerer.charAt(0).toUpperCase()}${registerer.substr(1)}`;
-			const resolver = `call${pascalCase}`;
-			const remover = `off${pascalCase}`;
-			const middleware = `middleware${pascalCase}`;
+			const { resolver, remover, middleware } = this.__namesFromRegisterer(registerer);
 
-			const callbackArray = [];
-			const middlewareArray = [];
+			let callbackArray = [];
+			let middlewareArray = [];
 			let stickyCalls = null;
 			if (property.sticky) {
 				stickyCalls = [];
 			}
 
 			const resolvePromise = (...resolveArgs) => {
+				this.__assertValid();
+
 				try {
 					for (const j in callbackArray) {
 						callbackArray[j](...resolveArgs);
 					}
 					if (JarvisEmitter.role.done === property.role && "always" !== property.name) {
-						this.callAlways(...resolveArgs);
+						this.call.always(...resolveArgs);
 					}
 				} catch (e) {
-					this.callCatch.call(null, e);
+					this.call.catch.call(null, e);
 				}
 			};
 
 			const registererCb = (cb) => {
+				this.__assertValid();
+
 				callbackArray.push(cb);
 				if (stickyCalls) {
 					for (const args of stickyCalls) {
@@ -176,7 +182,7 @@ class JarvisEmitter {
 									cb(e);
 								});
 							} else {
-								this.callCatch.call(null, e);
+								this.call.catch.call(null, e);
 							}
 						}
 					}
@@ -184,20 +190,24 @@ class JarvisEmitter {
 				return this;
 			};
 			const removerCb = (cb) => {
+				this.__assertValid();
+
 				if (!cb) {
 					callbackArray.splice(0, callbackArray.length);
 					return;
 				}
 				for (const j in callbackArray) {
 					if (callbackArray[j] === cb) {
-						callbackArray.splice(j, 1);
+						callbackArray.splice(parseInt(j, 10), 1);
 					}
 				}
 				return this;
 			};
 			const resolverCb = (...args) => {
+				this.__assertValid();
+
 				if (!callbackArray.length) {
-					const stack = new Error().stack;
+					const { stack } = new Error();
 					if ("error" === property.name) {
 						setTimeout(() => {
 							if (!callbackArray.length) {
@@ -226,15 +236,24 @@ class JarvisEmitter {
 							cb(e);
 						});
 					} else {
-						this.callCatch.call(null, e);
+						this.call.catch.call(null, e);
 					}
 				}
 
 				return this;
 			};
 			const middlewareCb = (cb) => {
+				this.__assertValid();
+
 				middlewareArray.push(cb);
 				return this;
+			};
+			const purge = () => {
+				callbackArray = [];
+				middlewareArray = [];
+				if (stickyCalls) {
+					stickyCalls = null;
+				}
 			};
 
 			registererCb.resolver = resolverCb;
@@ -257,6 +276,7 @@ class JarvisEmitter {
 			// keep a reference of the new set of functions
 			// so the outside user can get a list of functions by role
 			const mapsEntry = {
+				purge,
 				registerer: registererCb,
 				resolver: resolverCb,
 				remover: removerCb,
@@ -330,7 +350,7 @@ class JarvisEmitter {
 	 * Usage: promise.getHandlersForName("done").resolver(); //this will resolve the "done" callbacks.
 	 * @param {string} name The name of the promise interface.
 	 * 		For example, if an interface was extended using the name "action"
-	 * 		for the JarvisEmitterInterfaceBuilder, the interface name is "actionn"
+	 * 		for the JarvisEmitterInterfaceBuilder, the interface name is "action"
 	 * @returns {object|undefined}
 	 */
 	getHandlersForName(name) {
@@ -339,13 +359,13 @@ class JarvisEmitter {
 
 	promise() {
 		return new Promise((resolve, reject) => {
-			this.done((...args) => {
+			this.on.done((...args) => {
 				resolve(...args)
 			});
-			this.error((...args) => {
+			this.on.error((...args) => {
 				reject(...args);
 			});
-			this.catch((...args) => {
+			this.on.catch((...args) => {
 				reject(...args);
 			});
 		});
@@ -378,7 +398,7 @@ class JarvisEmitter {
 		const results = [];
 		let receivedResults = 0;
 		if (0 === args.length) {
-			promise.callDone([]);
+			promise.call.done([]);
 		} else {
 			for (const promIdx in args) {
 				const prom = args[promIdx];
@@ -387,10 +407,10 @@ class JarvisEmitter {
 						results[promIdx] = result;
 						receivedResults++;
 						if (receivedResults === args.length) {
-							promise.callDone(results);
+							promise.call.done(results);
 						}
 					})
-					.error(promise.callError);
+					.error(promise.call.error);
 			}
 		}
 		return promise;
@@ -401,7 +421,7 @@ class JarvisEmitter {
 	 * respective of the order of the emitters argument
 	 * If the emitter was resolved (done emitted) the returned array in the original emitter index will contain the result.
 	 * If it was rejected (error emitted) will contain undefined in the emitter index.
-	 * @param {JarvisEmitter...} emitters The emitters to wait for on their done/error events
+	 * @param {...JarvisEmitter} args The emitters to wait for on their done/error events
 	 * @return {JarvisEmitter} An emitter on which the done event is emitted once all emitters emitted done/error
 	 */
 	static some(...args) {
@@ -409,23 +429,23 @@ class JarvisEmitter {
 		const results = [];
 		let receivedResults = 0;
 		if (0 === args.length) {
-			emitter.callDone([]);
+			emitter.call.done([]);
 		} else {
 			for (const emitterIdx in args) {
 				const em = args[emitterIdx];
 				em
-					.done((result) => {
+					.on.done((result) => {
 						results[emitterIdx] = result;
 						receivedResults++;
 						if (receivedResults === args.length) {
-							emitter.callDone(results);
+							emitter.call.done(results);
 						}
 					})
 					.error(() => {
 						results[emitterIdx] = undefined;
 						receivedResults++;
 						if (receivedResults === args.length) {
-							emitter.callDone(results);
+							emitter.call.done(results);
 						}
 					});
 			}
@@ -433,6 +453,16 @@ class JarvisEmitter {
 		return emitter;
 	}
 
+
+	/**
+	 * Emitter should not be re-used after being destroyed
+	 */
+	destroy() {
+		Object.keys(this._nameMap).forEach((registerer) => {
+			this._nameMap[registerer].purge();
+		});
+		this.destroyed = true;
+	}
 
 	static immediate(result, role = JarvisEmitter.role.done, name = "done") {
 		const promise = new JarvisEmitter();
@@ -451,9 +481,9 @@ class JarvisEmitter {
 			const idx = undefined === cbIndex ? callArgs.length : cbIndex;
 			callArgs.splice(idx, 0, (...cbArgs) => {
 				if (resultsAsArray) {
-					return promise.callDone(cbArgs);
+					return promise.call.done(cbArgs);
 				}
-				promise.callDone(...cbArgs);
+				promise.call.done(...cbArgs);
 			});
 			fn(...callArgs);
 			return promise;
@@ -466,10 +496,10 @@ class JarvisEmitter {
 
 			fn(...callArgs)
 				.then((thenResult) => {
-					promise.callDone(thenResult);
+					promise.call.done(thenResult);
 				})
 				.catch((catchResult) => {
-					promise.callError(catchResult);
+					promise.call.error(catchResult);
 				});
 
 			return promise;
@@ -484,6 +514,21 @@ class JarvisEmitter {
 		const idx = unhandledExceptionCallbacks.indexOf(cb);
 		if (idx !== -1) {
 			unhandledExceptionCallbacks.splice(idx, 1);
+		}
+	}
+
+	__namesFromRegisterer(registerer) {
+		const pascalCase = `${registerer.charAt(0).toUpperCase()}${registerer.substr(1)}`;
+		return {
+			resolver: `call${pascalCase}`,
+			remover: `off${pascalCase}`,
+			middleware: `middleware${pascalCase}`,
+		};
+	}
+
+	__assertValid() {
+		if (this.destroyed) {
+			throw new Error(`JarvisEmitter used after being destroyed`);
 		}
 	}
 }

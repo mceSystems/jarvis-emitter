@@ -1,6 +1,6 @@
 {
 	"name": "jarvis-emitter",
-	"version": "2.0.10",
+	"version": "2.0.11",
 	"description": "Jarvis Emitter",
 	"main": "index",
 	"typings": "index",
