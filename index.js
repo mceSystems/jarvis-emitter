@@ -149,9 +149,16 @@ class JarvisEmitter {
 			let callbackArray = [];
 			let middlewareArray = [];
 			let stickyCalls = null;
+			let stickyLastMode = null;
+
+			if(property.stickyLast) {
+				stickyLastMode = true;
+				property.sticky = true;
+			}
+
 			if (property.sticky) {
 				stickyCalls = [];
-			}
+			} 
 
 			const resolvePromise = (...resolveArgs) => {
 				this.__assertValid();
@@ -225,6 +232,10 @@ class JarvisEmitter {
 				}
 
 				if (stickyCalls) {
+					if(stickyLastMode) {
+						//remove an element before adding - will always remain with 0 or 1 elements
+						stickyCalls.pop();
+					}
 					stickyCalls.push(args);
 				}
 
@@ -252,7 +263,7 @@ class JarvisEmitter {
 				callbackArray = [];
 				middlewareArray = [];
 				if (stickyCalls) {
-					stickyCalls = null;
+					stickyCalls = [];
 				}
 			};
 
