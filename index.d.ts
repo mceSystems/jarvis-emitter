@@ -9,6 +9,7 @@ export interface Property<Name extends string, Value = any> {
 	name: Name;
 	role: Role.event | Role.notify;
 	sticky?: boolean;
+	stickyLast?: boolean;
 	emittedType?: Value;
 }
 

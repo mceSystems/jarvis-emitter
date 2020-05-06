@@ -1,4 +1,6 @@
-const { expect } = require("chai");
+const {
+	expect
+} = require("chai");
 const JarvisEmitter = require("../");
 
 describe("Native interface 'done'", () => {
@@ -133,10 +135,10 @@ describe("Promise usage", () => {
 	it("shouldn't let user extends a 'promise' interface", () => {
 		let emitter = new JarvisEmitter([
 			JarvisEmitter.interfaceProperty()
-				.name("promise")
-				.description("bad interface name")
-				.role(JarvisEmitter.role.event)
-				.build(),
+			.name("promise")
+			.description("bad interface name")
+			.role(JarvisEmitter.role.event)
+			.build(),
 		]);
 		expect(emitter.callPromise).to.be.undefined
 	});
@@ -197,8 +199,7 @@ describe("Static function some", () => {
 			.done((results) => {
 				if (undefined === results[errorIdx] && "success" === results[successIdx]) {
 					done();
-				}
-				else {
+				} else {
 					done(new Error(`Expected to get results array of [undefined, "success"] and got: ${JSON.stringify(results)}`));
 				}
 
@@ -266,8 +267,8 @@ describe("Middlewares", () => {
 			});
 
 			emitter.middlewareCatch(() => {
-				throw exception;
-			})
+					throw exception;
+				})
 				.catch(() => {
 
 				});
@@ -287,9 +288,9 @@ describe("Middlewares", () => {
 			emitter.callDone();
 
 			emitter.middlewareCatch(() => {
-				throw exception;
-			})
-				.catch(() => { })
+					throw exception;
+				})
+				.catch(() => {})
 				.done(() => {
 					throw new Error();
 				});
@@ -383,6 +384,62 @@ describe("Extensions", () => {
 					done(e)
 				}
 			})
+		});
+	});
+
+	describe("#stickyLast property", () => {
+		it("should act sticky", () => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event,
+				stickyLast: true,
+			});
+			emitter.call.test("hello");
+			let value;
+			emitter.on.test(val => value = val);
+			expect(value).to.equal("hello");
+		});
+		it("should remember only last value", () => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event,
+				stickyLast: true,
+			});
+			emitter.call.test("hello");
+			emitter.call.test("world");
+			let value;
+			emitter.on.test(val => value = val);
+			expect(value).to.equal("world");
+		});
+		it("should get non-stuck value if registered before emit", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event,
+				stickyLast: true,
+			});
+			emitter.on.test(val => {
+				try{
+					expect(val).to.equal("hello");
+				} catch(e){
+					done(e);
+				}
+				done();
+			});
+			emitter.call.test("hello");
+		});
+		it("should act sticky asynchronous", (done) => {
+			const emitter = new JarvisEmitter().extend({
+				name: "test",
+				role: JarvisEmitter.role.event,
+				stickyLast: true,
+			});
+			emitter.call.test("hello");
+			setTimeout(() => {
+				let value;
+				emitter.on.test(val => value = val);
+				expect(value).to.equal("hello");
+				done();
+			}, 0);
 		});
 	});
 });
