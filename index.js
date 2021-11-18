@@ -114,8 +114,14 @@ class JarvisEmitter {
 				.role(JarvisEmitter.role.notify)
 				.description("Should be called if a notification should be sent during the operation")
 				.build();
+		const tap =
+			JarvisEmitter.interfaceProperty()
+				.name("tap")
+				.role(JarvisEmitter.role.observe)
+				.description("Should be called when any role \"resolves\"")
+				.build();
 
-		const defaultInterface = [done, error, always, catchPromise, event, notify];
+		const defaultInterface = [done, error, always, catchPromise, event, notify, tap];
 		for (const promiseInterface of defaultInterface) {
 			promiseInterface._defaultInterface = true;
 		}
@@ -151,14 +157,14 @@ class JarvisEmitter {
 			let stickyCalls = null;
 			let stickyLastMode = null;
 
-			if(property.stickyLast) {
+			if (property.stickyLast) {
 				stickyLastMode = true;
 				property.sticky = true;
 			}
 
 			if (property.sticky) {
 				stickyCalls = [];
-			} 
+			}
 
 			const resolvePromise = (...resolveArgs) => {
 				this.__assertValid();
@@ -169,6 +175,14 @@ class JarvisEmitter {
 					}
 					if (JarvisEmitter.role.done === property.role && "always" !== property.name) {
 						this.call.always(...resolveArgs);
+					}
+
+					if ("always" !== property.name && "tap" !== property.name) {
+						this.call.tap({
+							name: property.name,
+							role: property.role,
+							data: resolveArgs
+						});
 					}
 				} catch (e) {
 					this.call.catch.call(null, e);
@@ -232,7 +246,7 @@ class JarvisEmitter {
 				}
 
 				if (stickyCalls) {
-					if(stickyLastMode) {
+					if (stickyLastMode) {
 						//remove an element before adding - will always remain with 0 or 1 elements
 						stickyCalls.pop();
 					}
@@ -365,7 +379,7 @@ class JarvisEmitter {
 	 * @returns {object|undefined}
 	 */
 	getHandlersForName(name) {
-		return this._nameMap[name];
+		return this._nameMap[name] ?? this._nameMap["tap"];
 	}
 
 	promise() {
@@ -392,7 +406,7 @@ class JarvisEmitter {
 
 	/**
 	 *
-	 * @returns {{done: string, start: string, catchException: string, notify: string, event: string}}
+	 * @returns {{done: string, start: string, catchException: string, notify: string, event: string, observe: string}}
 	 */
 	static get role() {
 		return {
@@ -401,6 +415,7 @@ class JarvisEmitter {
 			catchException: "catch",
 			notify: "notify",
 			event: "event",
+			observe: "observe"
 		};
 	}
 
@@ -549,6 +564,7 @@ JarvisEmitter.Role = {
 	catchException: "catch",
 	notify: "notify",
 	event: "event",
+	observe: "observe",
 };
 
 module.exports = JarvisEmitter;

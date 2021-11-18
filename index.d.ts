@@ -2,7 +2,8 @@ export enum Role {
 	event = "event",
 	notify = "notify",
 	done = "done",
-	catchException = "catch"
+	catchException = "catch",
+	observe = "obsereve",
 }
 
 export interface Property<Name extends string, Value = any> {
@@ -22,6 +23,11 @@ export interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 	always: DoneType | ErrorType | Error;
 	event: any;
 	notify: any
+	tap: {
+		name: string;
+		role: Role;
+		data: any;
+	}
 }
 
 type Registerer<Interfaces, K extends keyof Interfaces, J extends JarvisEmitter<any, any, Interfaces>> = (listener: (arg: Interfaces[K]) => void) => J;
