@@ -376,10 +376,18 @@ class JarvisEmitter {
 	 * @param {string} name The name of the promise interface.
 	 * 		For example, if an interface was extended using the name "action"
 	 * 		for the JarvisEmitterInterfaceBuilder, the interface name is "action"
+	 * @param {string} [role] The role of the promise interface.
 	 * @returns {object|undefined}
 	 */
-	getHandlersForName(name) {
-		return this._nameMap[name] ?? this._nameMap["tap"];
+	getHandlersForName(name, role) {
+		return this._nameMap[name] ?? {
+			...this._nameMap["tap"],
+			resolver: (...data) => this._nameMap["tap"].resolver({
+				data,
+				name,
+				role
+			})
+		};
 	}
 
 	promise() {

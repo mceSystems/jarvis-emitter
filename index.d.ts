@@ -25,8 +25,8 @@ export interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 	notify: any
 	tap: {
 		name: string;
-		role: Role;
-		data: any;
+		role?: Role;
+		data: any[];
 	}
 }
 
@@ -72,7 +72,7 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	promise(): Promise<DoneType>;
 	pipe<T extends JarvisEmitter<any, any, any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
-	getHandlersForName<T extends keyof Interfaces>(name: T): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
+	getHandlersForName<T extends keyof Interfaces>(name: T, role?: string): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
 	destroy(): void;
 	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<Array<J[number] extends JarvisEmitter<infer D> ? D : void>, J[number] extends JarvisEmitter<any, infer E> ? E : Error>;
 	static emitifyFromAsync<I extends any[], O>(fn: (...args: I) => Promise<O>): (...callArgs: I) => JarvisEmitter<O, any>;
