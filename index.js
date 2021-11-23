@@ -380,7 +380,11 @@ class JarvisEmitter {
 	 * @returns {object|undefined}
 	 */
 	getHandlersForName(name, role) {
-		return this._nameMap[name] ?? {
+		if (this._nameMap[name]) {
+			return this._nameMap[name];
+		}
+
+		return {
 			...this._nameMap["tap"],
 			resolver: (...data) => this._nameMap["tap"].resolver({
 				data,
