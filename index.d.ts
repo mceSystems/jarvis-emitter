@@ -54,7 +54,7 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends Jarvi
 	purge: Function;
 }
 
-type ExtractJarvis<J extends JarvisEmitter<any, any>> = J extends JarvisEmitter<infer D, infer E> ? { d: D; e: E } : { d: void; e: Error };
+type ExtractJarvis<J extends JarvisEmitter<any, any>> = J extends JarvisEmitter<infer D, infer E> ? { d: D; e: E; } : { d: void; e: Error; };
 
 declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = DefaultInterfaces<DoneType, ErrorType>> {
 	constructor();
