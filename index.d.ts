@@ -54,7 +54,9 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, J extends Jarvi
 	purge: Function;
 }
 
-type ExtractJarvis<J extends JarvisEmitter<any, any>> = J extends JarvisEmitter<infer D, infer E> ? { d: D; e: E; } : { d: void; e: Error; };
+type ExtractJarvisEmitter<J extends JarvisEmitter<any, any>> = J extends JarvisEmitter<infer D, infer E> ? { d: D; e: E; } : { d: void; e: Error; };
+type ExtractJarvisEmitterDoneType<J extends JarvisEmitter<any, any>> = ExtractJarvisEmitter<J>["d"];
+type ExtractJarvisEmitterErrorType<J extends JarvisEmitter<any, any>> = ExtractJarvisEmitter<J>["e"];
 
 declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = DefaultInterfaces<DoneType, ErrorType>> {
 	constructor();
@@ -76,8 +78,8 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	getRolesHandlers(role: Role): InterfaceEntry<Interfaces, keyof Interfaces, JarvisEmitter<DoneType, ErrorType, Interfaces>>[];
 	getHandlersForName<T extends keyof Interfaces>(name: T, role?: string): InterfaceEntry<Interfaces, T, JarvisEmitter<DoneType, ErrorType, Interfaces>>;
 	destroy(): void;
-	static some<J extends Array<JarvisEmitter<any, any>>>(...emitters: J): JarvisEmitter<Array<ExtractJarvis<J[number]>["d"] | undefined>, never>;
-	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<Array<ExtractJarvis<J[number]>["d"]>, ExtractJarvis<J[number]>["e"]>;
+	static some<J extends Array<JarvisEmitter<any, any>>>(...emitters: J): JarvisEmitter<Array<ExtractJarvisEmitterDoneType<J[number]>| undefined>, never>;
+	static all<J extends JarvisEmitter<any, any>[]>(...emitters: J): JarvisEmitter<Array<ExtractJarvisEmitterDoneType<J[number]>>, ExtractJarvisEmitterErrorType<J[number]>>;
 	static emitifyFromAsync<I extends any[], O>(fn: (...args: I) => Promise<O>): (...callArgs: I) => JarvisEmitter<O, any>;
 }
 
