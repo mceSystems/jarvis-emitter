@@ -1,0 +1,11 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noEmit": true,
+		"moduleResolution": "node",
+		"target": "ES2017",
+		"module": "commonjs",
+		"esModuleInterop": true
+	},
+	"include": ["test/test.types.ts", "index.d.ts"]
+}

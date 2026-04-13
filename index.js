@@ -146,7 +146,7 @@ class JarvisEmitter {
 			if (undefined === property.name) {
 				continue;
 			}
-			if (undefined === property.role && -1 !== this._allowedRoles.indexOf(property.role)) {
+			if (undefined === property.role || -1 === this._allowedRoles.indexOf(property.role)) {
 				continue;
 			}
 			const registerer = property.name;
@@ -215,7 +215,7 @@ class JarvisEmitter {
 
 				if (!cb) {
 					callbackArray.splice(0, callbackArray.length);
-					return;
+					return this;
 				}
 				for (const j in callbackArray) {
 					if (callbackArray[j] === cb) {
