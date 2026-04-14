@@ -21,7 +21,7 @@ Comparison of runtime behavior (`index.js`) vs type declarations (`index.d.ts`).
 | 13 | **Open** | `Property.description` still not declared. |
 | 14 | **Fixed** | `pipe`: single guard, early `return this` (aligned with d.ts). |
 | 15 | **Open** | Two runtime role dictionaries (`JarvisEmitter.Role` vs `get role()`) unchanged. |
-| 16 | **Open** | CJS export vs ESM-style default in typings (consumer/tsconfig concern). |
+| 16 | **Fixed** | `index.d.ts` uses `export = JarvisEmitter` with merged namespace (matches `module.exports`). |
 
 ---
 
@@ -302,12 +302,13 @@ Two role dictionaries exist at runtime with different keys. Only the `Role` enum
 
 ### 16. Module export style mismatch
 
-**Status:** Open — inherent CJS vs ESM interop; unchanged.
+**Status:** Fixed — typings use `export = JarvisEmitter` (CommonJS-compatible). `Role`, `Property`, `PropertyDescriptor`, and `DefaultInterfaces` live in a merged `declare namespace JarvisEmitter`.
 
 **JS:** `module.exports = JarvisEmitter` (CommonJS)
-**d.ts:** `export default JarvisEmitter` (ES module default)
 
-Works with `esModuleInterop: true`, but without it consumers need `import JarvisEmitter = require('jarvis-emitter')`.
+**d.ts:** `export = JarvisEmitter` with merged namespace (matches CJS).
+
+Consumers: `require()` works; `import JarvisEmitter = require('jarvis-emitter')` works without `esModuleInterop`, `import JarvisEmitter, { Role } from 'jarvis-emitter'` works with `esModuleInterop: true`, named exports resolve to `JarvisEmitter.Role` etc. at the type level.
 
 ---
 
@@ -330,4 +331,4 @@ Works with `esModuleInterop: true`, but without it consumers need `import Jarvis
 | 13 | Moderate | `Property.description` field missing | Open |
 | 14 | Minor | `pipe()` duplicate guard + early return | Fixed |
 | 15 | Minor | Two different `Role` objects at runtime | Open |
-| 16 | Minor | CommonJS vs ES module default export | Open |
+| 16 | Minor | CommonJS vs typings export style | Fixed |

@@ -1,41 +1,3 @@
-export enum Role {
-	event = "event",
-	notify = "notify",
-	done = "done",
-	start = "start",
-	catchException = "catch", //
-	observe = "observe",
-}
-
-export interface Property<Name extends string, Value = any> {
-	name: Name;
-	role: Role.event | Role.notify | Role.observe | Role.start;
-	sticky?: boolean;
-	stickyLast?: boolean;
-	emittedType?: Value;
-}
-
-export interface PropertyDescriptor<Name extends string> {
-	name: Name;
-	role: Role.event | Role.notify | Role.observe | Role.start;
-	sticky?: boolean;
-	stickyLast?: boolean;
-}
-
-export interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
-	done: DoneType;
-	error: ErrorType;
-	catch: Error;
-	always: DoneType | ErrorType;
-	event: any;
-	notify: any;
-	tap: {
-		name: string;
-		role?: Role;
-		data: any[];
-	};
-}
-
 type Registerer<Interfaces, K extends keyof Interfaces, DoneType, ErrorType> = (
 	listener: (arg: Interfaces[K]) => void,
 ) => JarvisEmitter<DoneType, ErrorType, Interfaces>;
@@ -58,7 +20,7 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, DoneType, Error
 	remover: Remover<Interfaces, K, DoneType, ErrorType>;
 	middleware: Middleware<Interfaces, K, DoneType, ErrorType>;
 	name: K;
-	role: Role;
+	role: JarvisEmitter.Role;
 	purge: Function;
 }
 
@@ -69,8 +31,12 @@ type ExtractJarvisEmitterErrorType<J extends JarvisEmitter<any, any>> = J extend
 	? ErrorType
 	: Error;
 
-declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = DefaultInterfaces<DoneType, ErrorType>> {
-	constructor(interfaceDescriptor?: Property<string, any>[]);
+declare class JarvisEmitter<
+	DoneType = void,
+	ErrorType = Error,
+	Interfaces = JarvisEmitter.DefaultInterfaces<DoneType, ErrorType>,
+> {
+	constructor(interfaceDescriptor?: JarvisEmitter.Property<string, any>[]);
 	on: {
 		[key in keyof Interfaces]: Registerer<Interfaces, key, DoneType, ErrorType>;
 	};
@@ -91,21 +57,21 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	 * to avoid deeply nested types in long `.extend()` chains.
 	 */
 	extend<K extends keyof Interfaces & string>(
-		interfaceProps: PropertyDescriptor<K> | PropertyDescriptor<K>[],
+		interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
 	): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	extend<K extends string, V = K extends keyof Interfaces ? Interfaces[K] : void>(
-		interfaceProps: PropertyDescriptor<K> | PropertyDescriptor<K>[],
+		interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
 	): JarvisEmitter<DoneType, ErrorType, Omit<Interfaces, K> & Record<K, V>>;
-	extend<K extends keyof Interfaces & string, V extends any, T extends Property<K, V>>(
+	extend<K extends keyof Interfaces & string, V extends any, T extends JarvisEmitter.Property<K, V>>(
 		interfaceProps: T | T[],
 	): JarvisEmitter<DoneType, ErrorType, Interfaces>;
-	extend<K extends string, V extends any, T extends Property<K, V>>(
+	extend<K extends string, V extends any, T extends JarvisEmitter.Property<K, V>>(
 		interfaceProps: T | T[],
 	): JarvisEmitter<DoneType, ErrorType, Omit<Interfaces, T["name"]> & Record<T["name"], T["emittedType"]>>;
 	promise(): Promise<DoneType>;
 	pipe<T extends JarvisEmitter<any, any, any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	getRolesHandlers(
-		role: Role,
+		role: JarvisEmitter.Role,
 		defaultsOnly?: boolean,
 	): InterfaceEntry<Interfaces, keyof Interfaces, DoneType, ErrorType>[];
 	getHandlersForName<T extends keyof Interfaces>(
@@ -124,4 +90,44 @@ declare class JarvisEmitter<DoneType = void, ErrorType = Error, Interfaces = Def
 	): (...callArgs: I) => JarvisEmitter<O, any>;
 }
 
-export default JarvisEmitter;
+declare namespace JarvisEmitter {
+	enum Role {
+		event = "event",
+		notify = "notify",
+		done = "done",
+		start = "start",
+		catchException = "catch", //
+		observe = "observe",
+	}
+
+	interface Property<Name extends string, Value = any> {
+		name: Name;
+		role: Role.event | Role.notify | Role.observe | Role.start;
+		sticky?: boolean;
+		stickyLast?: boolean;
+		emittedType?: Value;
+	}
+
+	interface PropertyDescriptor<Name extends string> {
+		name: Name;
+		role: Role.event | Role.notify | Role.observe | Role.start;
+		sticky?: boolean;
+		stickyLast?: boolean;
+	}
+
+	interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
+		done: DoneType;
+		error: ErrorType;
+		catch: Error;
+		always: DoneType | ErrorType;
+		event: any;
+		notify: any;
+		tap: {
+			name: string;
+			role?: Role;
+			data: any[];
+		};
+	}
+}
+
+export = JarvisEmitter;

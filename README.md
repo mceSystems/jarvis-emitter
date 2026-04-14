@@ -8,12 +8,24 @@ A typed, extensible event emitter with middleware support, sticky events, and pr
 npm install jarvis-emitter
 ```
 
+The package is published as **CommonJS** (`module.exports`). Type definitions use `export =`, which matches that shape.
+
+### Importing (JavaScript and TypeScript)
+
+Pick one pattern:
+
+| Style | Example |
+|--------|---------|
+| **CommonJS** | `const JarvisEmitter = require("jarvis-emitter");` |
+| **TypeScript, no `esModuleInterop`** | `import JarvisEmitter = require("jarvis-emitter");` |
+| **TypeScript / bundlers with `esModuleInterop: true`** | `import JarvisEmitter, { Role, type DefaultInterfaces } from "jarvis-emitter";` |
+
+**Types:** `Role`, `Property`, `PropertyDescriptor`, and `DefaultInterfaces` live on the merged `JarvisEmitter` namespace in the typings. Destructured imports like `{ Role }` work when `esModuleInterop` is enabled. With `import JarvisEmitter = require("jarvis-emitter")`, use `JarvisEmitter.Role` (and the same pattern for other names). At runtime, `JarvisEmitter.Role` is also available on the constructor object from JS.
+
 ## Quick Start
 
 ```js
 const JarvisEmitter = require("jarvis-emitter");
-// or ESM syntax
-import JarvisEmitter, { Role, } from "jarvis-emitter";
 
 const emitter = new JarvisEmitter();
 
