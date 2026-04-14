@@ -1,4 +1,4 @@
-import JarvisEmitter, { DefaultInterfaces, Role, Property } from "..";
+import JarvisEmitter, { DefaultInterfaces, Role, Property, payload } from "..";
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
 
@@ -8,12 +8,12 @@ type Assert<T extends true> = T;
 interface GyroscopeData { x: number; y: number; z: number }
 class ServiceError extends Error { code = 0; }
 
-// ─── 1. extend — generic overload (new style) ─────────────────────────────────
+// ─── 1. extend — withType (explicit payload type) ────────────────────────────
 
-// 1a. Explicit K + V
+// 1a. withType + extend
 {
 	const em = new JarvisEmitter<void, Error>()
-		.extend<"action", string>({ name: "action", role: Role.event });
+		.withType<string>().extend({ name: "action", role: Role.event });
 
 	type _on = Assert<AssertEqual<Parameters<Parameters<typeof em.on.action>[0]>[0], string>>;
 	type _call = Assert<AssertEqual<Parameters<typeof em.call.action>[0], string>>;
@@ -39,11 +39,11 @@ class ServiceError extends Error { code = 0; }
 	type _b = Assert<AssertEqual<Parameters<Parameters<typeof em.on.b>[0]>[0], void>>;
 }
 
-// ─── 2. extend — legacy emittedType overload ───────────────────────────────────
+// ─── 2. extend — payload() + emittedType ───────────────────────────────────────
 
 {
 	const em = new JarvisEmitter<void, Error>()
-		.extend({ name: "data", role: Role.event, emittedType: 0 as number });
+		.extend({ name: "data", role: Role.event, emittedType: payload<number>() });
 
 	type _on = Assert<AssertEqual<Parameters<Parameters<typeof em.on.data>[0]>[0], number>>;
 }
@@ -78,7 +78,7 @@ class ServiceError extends Error { code = 0; }
 	>>;
 }
 
-// ─── 4. extend — generic V overrides class-level Interfaces ────────────────────
+// ─── 4. extend — withType overrides class-level Interfaces ─────────────────────
 
 {
 	interface MyInterfaces extends DefaultInterfaces<void, Error> {
@@ -86,7 +86,7 @@ class ServiceError extends Error { code = 0; }
 	}
 
 	const em = new JarvisEmitter<void, Error, MyInterfaces>()
-		.extend<"action", number>({ name: "action", role: Role.event });
+		.withType<number>().extend({ name: "action", role: Role.event });
 
 	type _overridden = Assert<AssertEqual<
 		Parameters<Parameters<typeof em.on.action>[0]>[0],
@@ -135,13 +135,13 @@ class ServiceError extends Error { code = 0; }
 	>>;
 }
 
-// ─── 7. chained extend calls ───────────────────────────────────────────────────
+// ─── 7. chained extend calls (withType) ───────────────────────────────────────
 
 {
 	const em = new JarvisEmitter<void, Error>()
-		.extend<"a", number>({ name: "a", role: Role.event })
-		.extend<"b", string>({ name: "b", role: Role.notify })
-		.extend<"c", boolean>({ name: "c", role: Role.event });
+		.withType<number>().extend({ name: "a", role: Role.event })
+		.withType<string>().extend({ name: "b", role: Role.notify })
+		.withType<boolean>().extend({ name: "c", role: Role.event });
 
 	type _a = Assert<AssertEqual<Parameters<Parameters<typeof em.on.a>[0]>[0], number>>;
 	type _b = Assert<AssertEqual<Parameters<Parameters<typeof em.on.b>[0]>[0], string>>;
@@ -153,7 +153,7 @@ class ServiceError extends Error { code = 0; }
 
 {
 	const em = new JarvisEmitter<string, Error>();
-	em.call.done("result", 1 as unknown, 2 as unknown);
+	em.call.done("result", 1, 2);
 }
 
 // ─── 9. Remover with optional listener ─────────────────────────────────────────
@@ -188,9 +188,7 @@ class ServiceError extends Error { code = 0; }
 // ─── 11. emitifyFromAsync ──────────────────────────────────────────────────────
 
 {
-	async function fetchData(url: string): Promise<{ data: string }> {
-		return { data: url };
-	}
+	const fetchData = async (url: string): Promise<{ data: string }> => ({ data: url });
 
 	const emitified = JarvisEmitter.emitifyFromAsync(fetchData);
 	const em = emitified("http://example.com");
@@ -214,7 +212,7 @@ class ServiceError extends Error { code = 0; }
 
 {
 	const props: Property<"custom", string>[] = [
-		{ name: "custom", role: Role.event, emittedType: "" }
+		{ name: "custom", role: Role.event, emittedType: "" },
 	];
 	const em = new JarvisEmitter(props);
 }
@@ -237,11 +235,10 @@ class ServiceError extends Error { code = 0; }
 	}
 	type SensorEmitter = JarvisEmitter<void, ServiceError, SensorInterfaces>;
 
-	function createSensorEmitter(): SensorEmitter {
-		return new JarvisEmitter<void, ServiceError, SensorInterfaces>()
+	const createSensorEmitter = (): SensorEmitter =>
+		new JarvisEmitter<void, ServiceError, SensorInterfaces>()
 			.extend({ name: "sensorData", role: Role.event })
 			.extend({ name: "stop", role: Role.notify });
-	}
 
 	const sensor = createSensorEmitter();
 	sensor.on.sensorData((data) => {
@@ -262,16 +259,15 @@ class ServiceError extends Error { code = 0; }
 	type NewError = { newCode: number };
 	type SensorEmitter = JarvisEmitter<void, NewError, SensorInterfaces>;
 
-	function createSensorEmitter(): SensorEmitter {
-		return new JarvisEmitter<SensorInterfaces["done"], SensorInterfaces["error"]>()
-			.extend<"sensorData", GyroscopeData>({ name: "sensorData", role: Role.event })
-			.extend<"stop", void>({ name: "stop", role: Role.notify })
-			.extend<"someEvent", { a: string, b: number }>({ name: "someEvent", role: Role.event })
+	const createSensorEmitter = (): SensorEmitter =>
+		new JarvisEmitter<void, NewError, SensorInterfaces>()
+			.extend({ name: "sensorData", role: Role.event })
+			.extend({ name: "stop", role: Role.notify })
+			.extend({ name: "someEvent", role: Role.event })
 			.middleware.error((next, err) => {
 				const newErr = { ...err, newCode: 1 };
 				next(newErr);
 			});
-	}
 
 	const sensor = createSensorEmitter();
 	sensor.on.sensorData((data) => {
@@ -282,8 +278,57 @@ class ServiceError extends Error { code = 0; }
 		const _b: number = data.b;
 	});
 	sensor.on.error((err) => {
-		const _err = err; // error type is NewError
+		const _err = err;
 	});
+}
+
+// ─── 16. withType vs payload (equivalent typing for new keys) ─────────────────
+
+{
+	const withTypeEm = new JarvisEmitter<void, Error>()
+		.withType<{ id: number }>().extend({ name: "action", role: Role.event });
+
+	type _withTypeOn = Assert<AssertEqual<
+		Parameters<Parameters<typeof withTypeEm.on.action>[0]>[0],
+		{ id: number }
+	>>;
+
+	const payloadEm = new JarvisEmitter<void, Error>()
+		.extend({ name: "action2", role: Role.event, emittedType: payload<{ id: number }>() });
+
+	type _payloadOn = Assert<AssertEqual<
+		Parameters<Parameters<typeof payloadEm.on.action2>[0]>[0],
+		{ id: number }
+	>>;
+}
+
+{
+	// Chained return values carry extended interface; assigning to a `const` and calling
+	// `.extend()` on the same variable does not update the variable's type (TS limitation).
+	const em = new JarvisEmitter<void, Error>()
+		.withType<string>().extend({ name: "aaa", role: Role.event })
+		.withType<number>().extend({ name: "bbb", role: Role.notify })
+		.withType<boolean>().extend({ name: "ccc", role: Role.event });
+	em.on.aaa((data) => {
+		const _a: string = data;
+	});
+	em.on.bbb((data) => {
+		const _b: number = data;
+	});
+	em.on.ccc((data) => {
+		const _c: boolean = data;
+	});
+
+	const em2 = new JarvisEmitter<void, Error>();
+	em2.extend({ name: "aaa", role: Role.event });
+	em2.extend({ name: "bbb", role: Role.notify });
+	em2.extend({ name: "ccc", role: Role.event });
+	// @ts-expect-error Sequential .extend() does not narrow em2's type; use chaining or withType on the chain.
+	em2.on.aaa((_data) => { });
+	// @ts-expect-error Sequential .extend() does not narrow em2's type.
+	em2.on.bbb((_data) => { });
+	// @ts-expect-error Sequential .extend() does not narrow em2's type.
+	em2.on.ccc((_data) => { });
 }
 
 //---- complex case ----
@@ -293,7 +338,7 @@ class ServiceError extends Error { code = 0; }
 		homed = "homed",
 		error = "error",
 	}
-	
+
 	interface PlcId {
 		ipAddress: string;
 		port: number;
@@ -394,8 +439,8 @@ class ServiceError extends Error { code = 0; }
 	type FullXyPlcInterfaces = DefaultInterfaces<XyPlcDoneType, Error> & XyPlcEmitterInterfaces;
 	type XyPlcEmitter = JarvisEmitter<XyPlcDoneType, Error, FullXyPlcInterfaces>;
 
-	function createXyPlcEmitter(): XyPlcEmitter {
-		return new JarvisEmitter<XyPlcDoneType, Error, FullXyPlcInterfaces>()
+	const createXyPlcEmitter = (): XyPlcEmitter => {
+		const emitter = new JarvisEmitter<XyPlcDoneType, Error, FullXyPlcInterfaces>()
 			.extend({
 				name: "ready",
 				role: Role.event,
@@ -467,5 +512,6 @@ class ServiceError extends Error { code = 0; }
 				name: "startYHoming",
 				role: Role.notify,
 			});
-	}
+		return emitter;
+	};
 }

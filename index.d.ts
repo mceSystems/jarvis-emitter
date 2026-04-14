@@ -1,3 +1,8 @@
+/**
+ * Forces TypeScript to resolve and flatten intersections and Omits into a clean object type.
+ */
+type Simplify<T> = { [K in keyof T]: T[K] } & {};
+
 type Registerer<Interfaces, K extends keyof Interfaces, DoneType, ErrorType> = (
 	listener: (arg: Interfaces[K]) => void,
 ) => JarvisEmitter<DoneType, ErrorType, Interfaces>;
@@ -12,7 +17,7 @@ type Middleware<Interfaces, K extends keyof Interfaces, DoneType, ErrorType> = <
 	ChangedArg = Interfaces[K],
 >(
 	listener: (next: (arg: ChangedArg) => void, arg: Interfaces[K]) => void,
-) => JarvisEmitter<DoneType, ErrorType, Omit<Interfaces, K> & Record<K, ChangedArg>>;
+) => JarvisEmitter<DoneType, ErrorType, Simplify<Omit<Interfaces, K> & Record<K, ChangedArg>>>;
 
 interface InterfaceEntry<Interfaces, K extends keyof Interfaces, DoneType, ErrorType> {
 	registerer: Registerer<Interfaces, K, DoneType, ErrorType>;
@@ -21,7 +26,7 @@ interface InterfaceEntry<Interfaces, K extends keyof Interfaces, DoneType, Error
 	middleware: Middleware<Interfaces, K, DoneType, ErrorType>;
 	name: K;
 	role: JarvisEmitter.Role;
-	purge: Function;
+	purge: () => void;
 }
 
 type ExtractJarvisEmitterDoneType<J extends JarvisEmitter<any, any>> = J extends JarvisEmitter<infer DoneType, any>
@@ -50,24 +55,37 @@ declare class JarvisEmitter<
 		[key in keyof Interfaces]: Middleware<Interfaces, key, DoneType, ErrorType>;
 	};
 	/**
-	 * Adds named interfaces. Type parameter `V` defaults to `void` for keys not already on `Interfaces`,
-	 * and to the existing property type when `K` is already a key of `Interfaces`.
-	 *
-	 * When `K` is already in `Interfaces`, the return type is kept flat (no Omit/Record wrapping)
-	 * to avoid deeply nested types in long `.extend()` chains.
+	 * Re-extends an existing interface key using a descriptor without `emittedType` (preserves `Interfaces`).
 	 */
 	extend<K extends keyof Interfaces & string>(
 		interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
 	): JarvisEmitter<DoneType, ErrorType, Interfaces>;
-	extend<K extends string, V = K extends keyof Interfaces ? Interfaces[K] : void>(
-		interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
-	): JarvisEmitter<DoneType, ErrorType, Omit<Interfaces, K> & Record<K, V>>;
+	/**
+	 * Re-extends an existing key with a full `Property` (including `emittedType` / `payload()`); preserves `Interfaces`.
+	 */
 	extend<K extends keyof Interfaces & string, V extends any, T extends JarvisEmitter.Property<K, V>>(
 		interfaceProps: T | T[],
 	): JarvisEmitter<DoneType, ErrorType, Interfaces>;
+	/**
+	 * Adds a new key (no `emittedType`); payload type defaults to `void`.
+	 */
+	extend<K extends string>(
+		interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
+	): JarvisEmitter<DoneType, ErrorType, Simplify<Omit<Interfaces, K> & Record<K, void>>>;
+	/**
+	 * Adds or overrides typing via `emittedType` (e.g. `payload<T>()`).
+	 */
 	extend<K extends string, V extends any, T extends JarvisEmitter.Property<K, V>>(
 		interfaceProps: T | T[],
-	): JarvisEmitter<DoneType, ErrorType, Omit<Interfaces, T["name"]> & Record<T["name"], T["emittedType"]>>;
+	): JarvisEmitter<DoneType, ErrorType, Simplify<Omit<Interfaces, T["name"]> & Record<T["name"], T["emittedType"]>>>;
+	/**
+	 * Pre-defines the payload type for the next `.extend()` using a `PropertyDescriptor` (no `emittedType`).
+	 */
+	withType<V>(): {
+		extend<K extends string>(
+			interfaceProps: JarvisEmitter.PropertyDescriptor<K> | JarvisEmitter.PropertyDescriptor<K>[],
+		): JarvisEmitter<DoneType, ErrorType, Simplify<Omit<Interfaces, K> & Record<K, V>>>;
+	};
 	promise(): Promise<DoneType>;
 	pipe<T extends JarvisEmitter<any, any, any>>(emitter: T): JarvisEmitter<DoneType, ErrorType, Interfaces>;
 	getRolesHandlers(
@@ -108,12 +126,21 @@ declare namespace JarvisEmitter {
 		emittedType?: Value;
 	}
 
+	/**
+	 * Descriptor without `emittedType` — use {@link payload} or {@link JarvisEmitter#withType} for payload typing.
+	 */
 	interface PropertyDescriptor<Name extends string> {
 		name: Name;
 		role: Role.event | Role.notify | Role.observe | Role.start;
 		sticky?: boolean;
 		stickyLast?: boolean;
+		emittedType?: never;
 	}
+
+	/**
+	 * Type-only helper for `extend()` with `emittedType`. At runtime returns `undefined` (not read by `extend`).
+	 */
+	function payload<T>(): T;
 
 	interface DefaultInterfaces<DoneType = void, ErrorType = Error> {
 		done: DoneType;
