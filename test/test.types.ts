@@ -282,7 +282,7 @@ class ServiceError extends Error { code = 0; }
 		const _b: number = data.b;
 	});
 	sensor.on.error((err) => {
-		const _err = err; // error type is ServiceError
+		const _err = err; // error type is NewError
 	});
 }
 
