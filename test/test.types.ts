@@ -15,7 +15,7 @@ class ServiceError extends Error { code = 0; }
 	const em = new JarvisEmitter<void, Error>()
 		.extend<"action", string>({ name: "action", role: Role.event });
 
-	type _on  = Assert<AssertEqual<Parameters<Parameters<typeof em.on.action>[0]>[0], string>>;
+	type _on = Assert<AssertEqual<Parameters<Parameters<typeof em.on.action>[0]>[0], string>>;
 	type _call = Assert<AssertEqual<Parameters<typeof em.call.action>[0], string>>;
 }
 
@@ -160,7 +160,7 @@ class ServiceError extends Error { code = 0; }
 
 {
 	const em = new JarvisEmitter<string, Error>();
-	const listener = (_arg: string) => {};
+	const listener = (_arg: string) => { };
 	em.on.done(listener);
 	em.off.done(listener);
 	em.off.done();
@@ -259,7 +259,7 @@ class ServiceError extends Error { code = 0; }
 		someEvent: { a: string, b: number };
 		stop: void;
 	}
-	type NewError =  { newCode: number };
+	type NewError = { newCode: number };
 	type SensorEmitter = JarvisEmitter<void, NewError, SensorInterfaces>;
 
 	function createSensorEmitter(): SensorEmitter {
@@ -284,4 +284,188 @@ class ServiceError extends Error { code = 0; }
 	sensor.on.error((err) => {
 		const _err = err; // error type is ServiceError
 	});
+}
+
+//---- complex case ----
+{
+	enum HomingStatus {
+		homing = "homing",
+		homed = "homed",
+		error = "error",
+	}
+	
+	interface PlcId {
+		ipAddress: string;
+		port: number;
+	}
+
+	interface RadiantId {
+		ipAddress: string;
+		port: number;
+	}
+
+	type XyPlcDoneType = Record<string, unknown> | {
+		movedTo: {
+			fingerId: number;
+			x: number;
+			y: number;
+		};
+	} | HomingStatus;
+
+	interface XyPlcEmitterInterfaces {
+		ready: void;
+		moveXy: {
+			plcId: PlcId;
+			fingerId: number;
+			x: number;
+			y: number;
+		};
+		moveX: {
+			plcId: PlcId;
+			fingerId: number;
+			x: number;
+		};
+		moveY: {
+			plcId: PlcId;
+			fingerId: number;
+			y: number;
+		};
+		getXPosition: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		getYPosition: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		setFingerHeight: {
+			plcId: PlcId;
+			fingerId: number;
+			height: number;
+		};
+		getZPosition: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		changeFingerType: {
+			plcId: PlcId;
+			fingerId: number;
+			fingerTypeIndex: number;
+		};
+		getActiveFingerType: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		moveSupportPlatform: {
+			plcId: PlcId;
+			cellId: number;
+			requiredPos: number;
+		};
+		getSupportPlatformPosition: {
+			plcId: PlcId;
+			cellId: number;
+		};
+		startHoming: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		getHomingXStatus: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		getHomingYStatus: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		getHomingZStatus: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		startXHoming: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+		startYHoming: {
+			plcId: PlcId;
+			fingerId: number;
+		};
+	}
+
+	type FullXyPlcInterfaces = DefaultInterfaces<XyPlcDoneType, Error> & XyPlcEmitterInterfaces;
+	type XyPlcEmitter = JarvisEmitter<XyPlcDoneType, Error, FullXyPlcInterfaces>;
+
+	function createXyPlcEmitter(): XyPlcEmitter {
+		return new JarvisEmitter<XyPlcDoneType, Error, FullXyPlcInterfaces>()
+			.extend({
+				name: "ready",
+				role: Role.event,
+				sticky: true,
+			}).extend({
+				name: "moveXy",
+				role: Role.notify,
+			}).extend({
+				name: "moveX",
+				role: Role.notify,
+			})
+			.extend({
+				name: "moveY",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getXPosition",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getYPosition",
+				role: Role.notify,
+			})
+			.extend({
+				name: "setFingerHeight",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getZPosition",
+				role: Role.notify,
+			})
+			.extend({
+				name: "changeFingerType",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getActiveFingerType",
+				role: Role.notify,
+			})
+			.extend({
+				name: "moveSupportPlatform",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getSupportPlatformPosition",
+				role: Role.notify,
+			})
+			.extend({
+				name: "startHoming",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getHomingXStatus",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getHomingYStatus",
+				role: Role.notify,
+			})
+			.extend({
+				name: "getHomingZStatus",
+				role: Role.notify,
+			})
+			.extend({
+				name: "startXHoming",
+				role: Role.notify,
+			})
+			.extend({
+				name: "startXHoming",
+				role: Role.notify,
+			});
+	}
 }

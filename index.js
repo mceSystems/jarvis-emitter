@@ -328,8 +328,8 @@ class JarvisEmitter {
 	 * @memberOf JarvisEmitter
 	 */
 	pipe(pipedPromise) {
-		if (!pipedPromise || !pipedPromise) {
-			return;
+		if (!pipedPromise) {
+			return this;
 		}
 		for (const name in this._nameMap) {
 			const handler = this._nameMap[name];

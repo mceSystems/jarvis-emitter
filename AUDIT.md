@@ -2,13 +2,37 @@
 
 Comparison of runtime behavior (`index.js`) vs type declarations (`index.d.ts`).
 
+## Resolution status (vs current tree)
+
+| # | Status | Notes |
+|---|--------|--------|
+| 1 | **Fixed** | `Role.observe` is `"observe"` in `index.d.ts`. |
+| 2 | **Fixed** | `Role.start` is present in `index.d.ts`. |
+| 3 | **Fixed** | `Property` / `PropertyDescriptor` `role` includes `observe` and `start`. |
+| 4 | **Fixed** | Constructor is `constructor(interfaceDescriptor?: Property<string, any>[]?)`. |
+| 5 | **Fixed** | `extend` overloads accept `T \| T[]` / `PropertyDescriptor<K>[]`. |
+| 6 | **Fixed** | `Resolver` is variadic (`...rest: unknown[]`). |
+| 7 | **Fixed** | Runtime `removerCb` returns `this` when purging all; types match. |
+| 8 | **Fixed** | `getRolesHandlers(role, defaultsOnly?: boolean)` is declared. |
+| 9 | **Fixed** | `DefaultInterfaces.always` is `DoneType \| ErrorType` (no extra `Error`). |
+| 10 | **Open** | Shorthand instance accessors still not on the class type. |
+| 11 | **Open** | Several static helpers still missing from `index.d.ts` (see section). |
+| 12 | **Open** | `destroyed` still not declared on the class. |
+| 13 | **Open** | `Property.description` still not declared. |
+| 14 | **Fixed** | `pipe`: single guard, early `return this` (aligned with d.ts). |
+| 15 | **Open** | Two runtime role dictionaries (`JarvisEmitter.Role` vs `get role()`) unchanged. |
+| 16 | **Open** | CJS export vs ESM-style default in typings (consumer/tsconfig concern). |
+
 ---
 
 ## Critical — Type/Behavior Mismatches
 
 ### 1. `Role` enum typo: `"obsereve"` instead of `"observe"`
 
-**d.ts line 6:**
+**Status:** Fixed — enum member is `observe = "observe"`.
+
+Previously in typings (wrong):
+
 ```ts
 observe = "obsereve"
 ```
@@ -18,11 +42,13 @@ observe = "obsereve"
 observe: "observe"
 ```
 
-Anyone comparing `Role.observe` against a runtime string will get a mismatch.
+Anyone comparing `Role.observe` against a runtime string would have seen a mismatch before the typings were corrected.
 
 ---
 
 ### 2. `Role` enum missing `start`
+
+**Status:** Fixed — `start` is in `Role` in `index.d.ts`.
 
 JS defines a `start` role:
 
@@ -31,7 +57,7 @@ JS defines a `start` role:
 static get role() {
   return {
     done: "done",
-    start: "start",       // <-- missing from d.ts
+    start: "start",
     catchException: "catch",
     notify: "notify",
     event: "event",
@@ -40,38 +66,41 @@ static get role() {
 }
 ```
 
-The `Role` enum in d.ts has no `start` member. Code that uses `JarvisEmitter.role.start` has no type coverage.
+The `Role` enum in `index.d.ts` now includes `start`.
 
 ---
 
 ### 3. `Property.role` is too restrictive
+
+**Status:** Fixed — `role` allows `event`, `notify`, `observe`, and `start`.
+
+Previously typings were too narrow:
 
 ```ts
 // index.d.ts:11
 role: Role.event | Role.notify;
 ```
 
-This means users can only `extend()` with `event` or `notify` roles. But JS also allows `observe` (and `start`) since only `done` and `catchException` are removed from `_allowedRoles` after construction. `Role.observe` should be included.
+JS also allows `observe` and `start` (only `done` and `catchException` are removed from `_allowedRoles` after construction); typings now include those roles.
 
 ---
 
 ### 4. Constructor accepts an argument — d.ts says it doesn't
+
+**Status:** Fixed — `constructor(interfaceDescriptor?: Property<string, any>[])` in `index.d.ts`.
 
 **JS:**
 ```js
 constructor(interfaceDescriptor = [])
 ```
 
-**d.ts:**
-```ts
-constructor();
-```
-
-Users can pass initial interface descriptors to the constructor, but the type says no parameters.
+Previously **d.ts** had `constructor();`. It now accepts an optional `Property<string, any>[]`.
 
 ---
 
 ### 5. `extend()` accepts an array — d.ts says single object only
+
+**Status:** Fixed — overloads use `T | T[]` and `PropertyDescriptor<K> | PropertyDescriptor<K>[]`.
 
 **JS:**
 ```js
@@ -83,62 +112,63 @@ extend(interfaceDescription = []) {
 }
 ```
 
-**d.ts:**
+Previously **d.ts** accepted only a single descriptor:
+
 ```ts
-extend<K extends string, V, T extends Property<K, V>>(interfaceProps: T): JarvisEmitter<...>;
+extend<...>(interfaceProps: T): JarvisEmitter<...>;
 ```
 
-The type only accepts a single `Property`. JS accepts `Property | Property[]`.
+**d.ts** now accepts `T | T[]` (and the `PropertyDescriptor` overload accepts arrays). JS still accepts `Property | Property[]`.
 
 ---
 
 ### 6. `Resolver` is typed as single-arg, JS is variadic
 
-**d.ts:**
+**Status:** Fixed — `Resolver` includes `...rest: unknown[]`.
+
+Previously **d.ts**:
+
 ```ts
 type Resolver<...> = (arg: Interfaces[K]) => J;
 ```
+
+**d.ts** now uses `(arg, ...rest: unknown[]) => JarvisEmitter<...>`.
 
 **JS:**
 ```js
 const resolverCb = (...args) => { ... }
 ```
 
-Callers can do `emitter.call.done(a, b, c)` at runtime, but the type only allows one argument. Listeners also receive `...resolveArgs` spread.
-
 ---
 
 ### 7. `Remover` returns `undefined` when called without a listener
 
-**d.ts:**
-```ts
-type Remover<...> = (listener?: ...) => J;
-```
+**Status:** Fixed — runtime returns `this` on purge-all; `Remover` return type is `JarvisEmitter<...>`.
 
-Always returns `J`.
+**d.ts** types `Remover` as returning `JarvisEmitter<...>`.
 
-**JS:**
+**JS** (current): purge-all returns `this`:
+
 ```js
 const removerCb = (cb) => {
   if (!cb) {
     callbackArray.splice(0, callbackArray.length);
-    return;       // <-- returns undefined
+    return this;
   }
   // ...
   return this;
 };
 ```
 
-When called with no argument (purge all listeners), returns `undefined` — breaks chaining.
+Older versions returned bare `return` on purge-all, which broke chaining; runtime and typings are aligned now.
 
 ---
 
 ### 8. `getRolesHandlers` has a second parameter not in d.ts
 
-**d.ts:**
-```ts
-getRolesHandlers(role: Role): InterfaceEntry<...>[];
-```
+**Status:** Fixed — `getRolesHandlers(role, defaultsOnly?: boolean)` is declared.
+
+Previously **d.ts** listed only `getRolesHandlers(role: Role)`.
 
 **JS:**
 ```js
@@ -151,11 +181,13 @@ getRolesHandlers(role, defaultsOnly) {
 }
 ```
 
-The `defaultsOnly?: boolean` parameter is untyped.
-
 ---
 
 ### 9. `DefaultInterfaces.always` type includes `Error` but `catch` never triggers `always`
+
+**Status:** Fixed — `always` is `DoneType | ErrorType` in `index.d.ts`.
+
+Previously:
 
 ```ts
 always: DoneType | ErrorType | Error;
@@ -175,6 +207,8 @@ if (JarvisEmitter.role.done === property.role && "always" !== property.name) {
 ## Moderate — Missing API Surface in d.ts
 
 ### 10. Shorthand instance accessors completely untyped
+
+**Status:** Open — still not declared on `JarvisEmitter` in `index.d.ts`.
 
 For every non-reserved interface name, JS creates direct accessors on the instance:
 
@@ -200,6 +234,8 @@ None of these are in d.ts.
 
 ### 11. Missing static methods
 
+**Status:** Open — `emitifyFromAsync` / `all` / `some` are declared; the table below lists helpers still missing from typings.
+
 | Method | JS | d.ts |
 |---|---|---|
 | `static immediate(result, role?, name?)` | line 505 | missing |
@@ -213,11 +249,15 @@ None of these are in d.ts.
 
 ### 12. Missing `destroyed` instance property
 
+**Status:** Open — still not declared in `index.d.ts`.
+
 JS sets `this.destroyed = false` in constructor and `this.destroyed = true` in `destroy()`. Not declared in d.ts.
 
 ---
 
 ### 13. `Property` interface missing `description` field
+
+**Status:** Open — `description` still not on `Property` in `index.d.ts`.
 
 `JarvisEmitterInterfaceBuilder` has a `.description(desc)` method, so the built object can have a `description` field. The `Property` interface in d.ts doesn't include it.
 
@@ -227,18 +267,23 @@ JS sets `this.destroyed = false` in constructor and `this.destroyed = true` in `
 
 ### 14. `pipe()` has a duplicate guard condition
 
+**Status:** Fixed — `if (!pipedPromise) { return this; }`.
+
+Previously (bug):
+
 ```js
-// index.js:331
-if (!pipedPromise || !pipedPromise) {  // same check twice
-  return;   // returns undefined, d.ts says JarvisEmitter
+if (!pipedPromise || !pipedPromise) {
+  return;
 }
 ```
 
-Likely meant `!pipedPromise || !pipedPromise._nameMap` or similar. Also returns `undefined` on that branch — type says it always returns `JarvisEmitter`.
+Current `index.js` matches `pipe(): JarvisEmitter<...>` in `index.d.ts`.
 
 ---
 
 ### 15. `JarvisEmitter.Role` (static prop) vs `static get role()` — two different role objects
+
+**Status:** Open — runtime still exposes two dictionaries with different keys.
 
 ```js
 // static getter — line 423
@@ -255,24 +300,9 @@ Two role dictionaries exist at runtime with different keys. Only the `Role` enum
 
 ---
 
-### 16. `extend()` validation bug in JS
+### 16. Module export style mismatch
 
-```js
-// index.js:149
-if (undefined === property.role && -1 !== this._allowedRoles.indexOf(property.role)) {
-  continue;
-}
-```
-
-This condition is `role === undefined && role IS in allowedRoles`. Since `undefined` is never in `_allowedRoles`, this branch is dead code. Likely should be `||` instead of `&&`:
-
-```js
-if (undefined === property.role || -1 === this._allowedRoles.indexOf(property.role)) {
-```
-
----
-
-### 17. Module export style mismatch
+**Status:** Open — inherent CJS vs ESM interop; unchanged.
 
 **JS:** `module.exports = JarvisEmitter` (CommonJS)
 **d.ts:** `export default JarvisEmitter` (ES module default)
@@ -283,22 +313,21 @@ Works with `esModuleInterop: true`, but without it consumers need `import Jarvis
 
 ## Summary Table
 
-| # | Severity | Issue |
-|---|----------|-------|
-| 1 | **Critical** | `Role.observe` value is `"obsereve"` (typo) |
-| 2 | **Critical** | `Role` enum missing `start` |
-| 3 | **Critical** | `Property.role` excludes `observe` (and `start`) |
-| 4 | **Critical** | Constructor param untyped |
-| 5 | **Critical** | `extend()` doesn't accept arrays |
-| 6 | **Critical** | `Resolver` should be variadic |
-| 7 | **Critical** | `Remover` returns `undefined` on purge-all |
-| 8 | **Critical** | `getRolesHandlers` missing `defaultsOnly` param |
-| 9 | **Critical** | `always` type includes unreachable `Error` |
-| 10 | Moderate | Shorthand accessors (`.done()`, `.error()`, etc.) untyped |
-| 11 | Moderate | 6 static methods missing from d.ts |
-| 12 | Moderate | `destroyed` property missing from d.ts |
-| 13 | Moderate | `Property.description` field missing |
-| 14 | Minor | `pipe()` duplicate guard + returns `undefined` |
-| 15 | Minor | Two different `Role` objects at runtime |
-| 16 | Minor | Dead-code validation bug in `extend()` |
-| 17 | Minor | CommonJS vs ES module default export |
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| 1 | **Critical** | `Role.observe` value was `"obsereve"` (typo) | Fixed |
+| 2 | **Critical** | `Role` enum missing `start` | Fixed |
+| 3 | **Critical** | `Property.role` excluded `observe` (and `start`) | Fixed |
+| 4 | **Critical** | Constructor param untyped | Fixed |
+| 5 | **Critical** | `extend()` didn't accept arrays in typings | Fixed |
+| 6 | **Critical** | `Resolver` should be variadic | Fixed |
+| 7 | **Critical** | `Remover` / purge-all chaining | Fixed |
+| 8 | **Critical** | `getRolesHandlers` missing `defaultsOnly` param | Fixed |
+| 9 | **Critical** | `always` type included unreachable `Error` | Fixed |
+| 10 | Moderate | Shorthand accessors (`.done()`, `.error()`, etc.) untyped | Open |
+| 11 | Moderate | Several static methods still missing from d.ts | Open |
+| 12 | Moderate | `destroyed` property missing from d.ts | Open |
+| 13 | Moderate | `Property.description` field missing | Open |
+| 14 | Minor | `pipe()` duplicate guard + early return | Fixed |
+| 15 | Minor | Two different `Role` objects at runtime | Open |
+| 16 | Minor | CommonJS vs ES module default export | Open |
