@@ -464,7 +464,7 @@ class ServiceError extends Error { code = 0; }
 				role: Role.notify,
 			})
 			.extend({
-				name: "startXHoming",
+				name: "startYHoming",
 				role: Role.notify,
 			});
 	}
