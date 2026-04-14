@@ -97,15 +97,38 @@ declare class JarvisEmitter<
 		role?: string,
 	): InterfaceEntry<Interfaces, T, DoneType, ErrorType>;
 	destroy(): void;
+
+	/** Lowercase role string map (same values as {@link JarvisEmitter.Role}). Matches the runtime `static get role()` object. */
+	static get role(): typeof JarvisEmitter.Role;
+
+	static immediate(
+		result?: unknown,
+		role?: JarvisEmitter.Role,
+		name?: string,
+	): JarvisEmitter<any, any>;
+
+	/**
+	 * Wraps a function that receives a trailing callback; injects a callback that resolves `done` on the returned emitter.
+	 */
+	static emitify(
+		fn: (...args: unknown[]) => void,
+		resultsAsArray?: boolean,
+		cbIndex?: number,
+	): (...callArgs: unknown[]) => JarvisEmitter<any, any>;
+
+	static emitifyFromAsync<I extends any[], O>(
+		fn: (...args: I) => Promise<O>,
+	): (...callArgs: I) => JarvisEmitter<O, any>;
+
 	static some<J extends Array<JarvisEmitter<any, any>>>(
 		...emitters: J
 	): JarvisEmitter<Array<ExtractJarvisEmitterDoneType<J[number]> | undefined>, never>;
 	static all<J extends JarvisEmitter<any, any>[]>(
 		...emitters: J
 	): JarvisEmitter<Array<ExtractJarvisEmitterDoneType<J[number]>>, ExtractJarvisEmitterErrorType<J[number]>>;
-	static emitifyFromAsync<I extends any[], O>(
-		fn: (...args: I) => Promise<O>,
-	): (...callArgs: I) => JarvisEmitter<O, any>;
+
+	static onUnhandledException(cb: (...args: unknown[]) => void): void;
+	static offUnhandledException(cb: (...args: unknown[]) => void): void;
 }
 
 declare namespace JarvisEmitter {
