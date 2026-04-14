@@ -199,6 +199,14 @@ class ServiceError extends Error { code = 0; }
 	>>;
 }
 
+// ─── 11b. emitify + JarvisEmitter registerer (`on.always`, `on.done`, …) ───────
+
+{
+	const em = new JarvisEmitter<void, Error>();
+	JarvisEmitter.emitify(em.on.always)();
+	JarvisEmitter.emitify(em.on.done)();
+}
+
 // ─── 12. promise() returns Promise<DoneType> ──────────────────────────────────
 
 {

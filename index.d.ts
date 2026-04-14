@@ -108,10 +108,15 @@ declare class JarvisEmitter<
 	): JarvisEmitter<any, any>;
 
 	/**
-	 * Wraps a function that receives a trailing callback; injects a callback that resolves `done` on the returned emitter.
+	 * Wraps a function that receives a callback injected by `emitify` (trailing callback, `setTimeout`-style,
+	 * or a single-listener registerer such as `emitter.on.done` / `emitter.on.always`).
+	 * The injected callback forwards to `call.done` on the returned emitter; any return value from `fn` is ignored.
+	 *
+	 * Parameters use `any[]` so this accepts both classic `(a, b, cb)` APIs and `Registerer`-shaped functions whose
+	 * first argument is a typed listener — which are not assignable to `(...args: unknown[]) => void` under strict typing.
 	 */
 	static emitify(
-		fn: (...args: unknown[]) => void,
+		fn: (...args: any[]) => any,
 		resultsAsArray?: boolean,
 		cbIndex?: number,
 	): (...callArgs: unknown[]) => JarvisEmitter<any, any>;
