@@ -136,17 +136,22 @@ class JarvisEmitter {
 	 *
 	 * @param interfaceDescription
 	 */
+	withType() {
+		return {
+			extend: (interfaceProps) => this.extend(interfaceProps),
+		};
+	}
+
 	extend(interfaceDescription = []) {
 		if (!Array.isArray(interfaceDescription)) {
 			// eslint-disable-next-line no-param-reassign
 			interfaceDescription = [interfaceDescription];
 		}
-		for (const i in interfaceDescription) {
-			const property = interfaceDescription[i];
+		for (const property of interfaceDescription) {
 			if (undefined === property.name) {
 				continue;
 			}
-			if (undefined === property.role && -1 !== this._allowedRoles.indexOf(property.role)) {
+			if (undefined === property.role || -1 === this._allowedRoles.indexOf(property.role)) {
 				continue;
 			}
 			const registerer = property.name;
@@ -170,8 +175,8 @@ class JarvisEmitter {
 				this.__assertValid();
 
 				try {
-					for (const j in callbackArray) {
-						callbackArray[j](...resolveArgs);
+					for (const cb of callbackArray) {
+						cb(...resolveArgs);
 					}
 					if (JarvisEmitter.role.done === property.role && "always" !== property.name) {
 						this.call.always(...resolveArgs);
@@ -215,11 +220,11 @@ class JarvisEmitter {
 
 				if (!cb) {
 					callbackArray.splice(0, callbackArray.length);
-					return;
+					return this;
 				}
-				for (const j in callbackArray) {
+				for (let j = callbackArray.length - 1; j >= 0; j--) {
 					if (callbackArray[j] === cb) {
-						callbackArray.splice(parseInt(j, 10), 1);
+						callbackArray.splice(j, 1);
 					}
 				}
 				return this;
@@ -328,8 +333,8 @@ class JarvisEmitter {
 	 * @memberOf JarvisEmitter
 	 */
 	pipe(pipedPromise) {
-		if (!pipedPromise || !pipedPromise) {
-			return;
+		if (!pipedPromise) {
+			return this;
 		}
 		for (const name in this._nameMap) {
 			const handler = this._nameMap[name];
@@ -438,7 +443,7 @@ class JarvisEmitter {
 		if (0 === args.length) {
 			promise.call.done([]);
 		} else {
-			for (const promIdx in args) {
+			for (let promIdx = 0; promIdx < args.length; promIdx++) {
 				const prom = args[promIdx];
 				prom
 					.done((result) => {
@@ -469,7 +474,7 @@ class JarvisEmitter {
 		if (0 === args.length) {
 			emitter.call.done([]);
 		} else {
-			for (const emitterIdx in args) {
+			for (let emitterIdx = 0; emitterIdx < args.length; emitterIdx++) {
 				const em = args[emitterIdx];
 				em
 					.on.done((result) => {
@@ -577,6 +582,10 @@ JarvisEmitter.Role = {
 	notify: "notify",
 	event: "event",
 	observe: "observe",
+};
+
+JarvisEmitter.payload = function payload() {
+	return undefined;
 };
 
 module.exports = JarvisEmitter;

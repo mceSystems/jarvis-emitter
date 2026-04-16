@@ -1,22 +1,23 @@
 {
 	"name": "jarvis-emitter",
-	"version": "2.1.4",
+	"version": "3.0.0",
 	"description": "Jarvis Emitter",
 	"main": "index",
 	"typings": "index",
 	"scripts": {
-		"test": "mocha test/test.functionality.js"
+		"test": "mocha test/test.functionality.js",
+		"test:types": "tsc --noEmit test/test.types.ts"
 	},
 	"author": "mce",
 	"dependencies": {
-		"debug": "^3.1.0"
+		"debug": "^4.1.1"
 	},
 	"license": "MIT",
 	"devDependencies": {
 		"@types/mocha": "^5.2.5",
 		"chai": "^4.1.2",
-		"mocha": "^5.2.0",
-		"typescript": "^3.2.4"
+		"mocha": "^11.7.5",
+		"typescript": "^5.7.3"
 	},
 	"repository": {
 		"type": "git",
