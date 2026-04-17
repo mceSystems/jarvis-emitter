@@ -38,3 +38,14 @@ type Assert<T extends true> = T;
   type _done = Assert<AssertEqual<DI['done'], unknown>>;
   type _error = Assert<AssertEqual<DI['error'], unknown>>;
 }
+
+// event() and notify() carry payload type
+{
+  type EventConfig = RoleConfig<string>;
+  type NotifyConfig = RoleConfig<{ x: number }>;
+  type _eventPayload = Assert<AssertEqual<PayloadOf<EventConfig>, string>>;
+  type _notifyPayload = Assert<AssertEqual<PayloadOf<NotifyConfig>, { x: number }>>;
+
+  type VoidConfig = RoleConfig;
+  type _voidPayload = Assert<AssertEqual<PayloadOf<VoidConfig>, void>>;
+}
