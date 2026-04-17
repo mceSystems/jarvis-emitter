@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmitter } from '../src/emitter.js';
+import { event, notify } from '../src/roles.js';
 
 describe('createEmitter — default interfaces', () => {
   describe('on/emit', () => {
@@ -153,5 +154,81 @@ describe('createEmitter — default interfaces', () => {
       em.emit.error('fail');
       expect(catchListener).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('createEmitter — custom events via schema', () => {
+  it('registers custom event from schema', () => {
+    const em = createEmitter<void>({
+      status: event<string>(),
+    });
+    const listener = vi.fn();
+    em.on.status(listener);
+    em.emit.status('online');
+    expect(listener).toHaveBeenCalledWith('online');
+  });
+
+  it('registers custom notify from schema', () => {
+    const em = createEmitter<void>({
+      command: notify<{ action: string }>(),
+    });
+    const listener = vi.fn();
+    em.on.command(listener);
+    em.emit.command({ action: 'start' });
+    expect(listener).toHaveBeenCalledWith({ action: 'start' });
+  });
+
+  it('supports multiple custom events', () => {
+    const em = createEmitter<void>({
+      status: event<string>(),
+      progress: event<number>(),
+    });
+    const statusListener = vi.fn();
+    const progressListener = vi.fn();
+    em.on.status(statusListener);
+    em.on.progress(progressListener);
+    em.emit.status('running');
+    em.emit.progress(42);
+    expect(statusListener).toHaveBeenCalledWith('running');
+    expect(progressListener).toHaveBeenCalledWith(42);
+  });
+
+  it('custom events coexist with default events', () => {
+    const em = createEmitter<string>({
+      status: event<number>(),
+    });
+    const doneListener = vi.fn();
+    const statusListener = vi.fn();
+    em.on.done(doneListener);
+    em.on.status(statusListener);
+    em.emit.done('result');
+    em.emit.status(100);
+    expect(doneListener).toHaveBeenCalledWith('result');
+    expect(statusListener).toHaveBeenCalledWith(100);
+  });
+
+  it('tap fires for custom events', () => {
+    const em = createEmitter<void>({
+      status: event<string>(),
+    });
+    const tapListener = vi.fn();
+    em.on.tap(tapListener);
+    em.emit.status('online');
+    expect(tapListener).toHaveBeenCalledWith({
+      name: 'status',
+      role: 'event',
+      data: ['online'],
+    });
+  });
+
+  it('unsub works for custom events', () => {
+    const em = createEmitter<void>({
+      status: event<string>(),
+    });
+    const listener = vi.fn();
+    const unsub = em.on.status(listener);
+    unsub();
+    em.emit.status('online');
+    expect(listener).not.toHaveBeenCalled();
   });
 });
