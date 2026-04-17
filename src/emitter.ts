@@ -9,6 +9,7 @@ import type {
   DoneTypeOf,
 } from './types.js';
 import { EmitterTimeoutError } from './types.js';
+import { registry } from './registry.js';
 
 interface InterfaceEntry {
   listeners: Listener<any>[];
@@ -86,6 +87,23 @@ export class JarvisEmitter<Schema extends EmitterSchema = {}> {
     this.emit = this._buildEmitNamespace();
     this.off = this._buildOffNamespace();
     this.transform = this._buildTransformNamespace();
+
+    if (registry.enabled) {
+      registry.register(
+        this,
+        this._label,
+        () => [...this._interfaces.keys()],
+        () => {
+          const counts: Record<string, number> = {};
+          for (const [name, entry] of this._interfaces) {
+            if (entry.listeners.length > 0) {
+              counts[name] = entry.listeners.length;
+            }
+          }
+          return counts;
+        },
+      );
+    }
   }
 
   private static _idCounter = 0;
@@ -157,6 +175,8 @@ export class JarvisEmitter<Schema extends EmitterSchema = {}> {
     if (name !== 'always' && name !== 'tap') {
       this._emitTap(name, entry.role, value);
     }
+
+    registry.notifyEmit(this._label, name, value);
   }
 
   private _emitAlways(value: any): void {
@@ -386,6 +406,7 @@ export class JarvisEmitter<Schema extends EmitterSchema = {}> {
       entry.transforms.length = 0;
       entry.stickyCalls.length = 0;
     }
+    registry.deregister(this);
     this._destroyed = true;
   }
 
