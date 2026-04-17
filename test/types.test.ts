@@ -69,6 +69,68 @@ type Assert<T extends true> = T;
   type _voidPayload = Assert<AssertEqual<PayloadOf<VoidConfig>, void>>;
 }
 
+// End-to-end inference via public API
+import { createEmitter, event, notify, doneType, errorType } from '../src/index.js';
+
+{
+  // No schema — all unknown
+  const em = createEmitter();
+  em.on.done((v) => {
+    type _ = Assert<AssertEqual<typeof v, unknown>>;
+  });
+  em.on.error((v) => {
+    type _ = Assert<AssertEqual<typeof v, unknown>>;
+  });
+}
+
+{
+  // doneType sets done payload type, error stays unknown
+  const em = createEmitter({ done: doneType<{ value: number }>() });
+  em.on.done((r) => {
+    type _ = Assert<AssertEqual<typeof r, { value: number }>>;
+  });
+  em.on.error((v) => {
+    type _ = Assert<AssertEqual<typeof v, unknown>>;
+  });
+  em.on.always((v) => {
+    type _ = Assert<AssertEqual<typeof v, { value: number } | unknown>>;
+  });
+}
+
+{
+  // doneType + errorType + custom events
+  const em = createEmitter({
+    done: doneType<string>(),
+    error: errorType<Error>(),
+    status: event<number>(),
+    cmd: notify<{ action: string }>(),
+  });
+  em.on.done((r) => {
+    type _ = Assert<AssertEqual<typeof r, string>>;
+  });
+  em.on.error((e) => {
+    type _ = Assert<AssertEqual<typeof e, Error>>;
+  });
+  em.on.status((s) => {
+    type _ = Assert<AssertEqual<typeof s, number>>;
+  });
+  em.on.cmd((c) => {
+    type _ = Assert<AssertEqual<typeof c, { action: string }>>;
+  });
+  em.emit.done('hi');
+  em.emit.error(new Error('x'));
+  em.emit.status(42);
+  em.emit.cmd({ action: 'go' });
+}
+
+{
+  // event() without a generic yields void
+  const em = createEmitter({ tick: event() });
+  em.on.tick((v) => {
+    type _ = Assert<AssertEqual<typeof v, void>>;
+  });
+}
+
 describe('compile-time type assertions', () => {
   it('compiles', () => {});
 });
