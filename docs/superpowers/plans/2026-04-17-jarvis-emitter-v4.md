@@ -81,7 +81,7 @@ Replace the full contents of `package.json`:
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "tsc --noEmit",
-    "prepack": "npm run build",
+    "prepack": "ppnpm run build",
     "clean": "rm -rf dist"
   },
   "author": "mce",
@@ -177,9 +177,9 @@ docs
 - [ ] **Step 9: Install dependencies and verify**
 
 ```bash
-npm install
-npx tsc --noEmit
-npx vitest run
+pnpm install
+pnpm exec tsc --noEmit
+pnpm exec vitest run
 ```
 
 Expected: tsc passes (empty project), vitest reports no tests found (OK for now).
@@ -339,7 +339,7 @@ type Assert<T extends true> = T;
 - [ ] **Step 3: Run type check to verify assertions pass**
 
 ```bash
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 ```
 
 Expected: PASS with no errors.
@@ -410,7 +410,7 @@ describe('notify()', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-npx vitest run test/roles.test.ts
+pnpm exec vitest run test/roles.test.ts
 ```
 
 Expected: FAIL — cannot find `../src/roles.js`.
@@ -437,7 +437,7 @@ export function notify<T = void>(options?: RoleOptions): RoleConfig<T> {
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-npx vitest run test/roles.test.ts
+pnpm exec vitest run test/roles.test.ts
 ```
 
 Expected: PASS — all 7 tests pass.
@@ -467,7 +467,7 @@ import type { RoleConfig } from '../src/types.js';
 - [ ] **Step 6: Run full type check**
 
 ```bash
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 ```
 
 Expected: PASS.
@@ -653,7 +653,7 @@ describe('createEmitter — default interfaces', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-npx vitest run test/emitter.test.ts
+pnpm exec vitest run test/emitter.test.ts
 ```
 
 Expected: FAIL — cannot find `../src/emitter.js`.
@@ -1220,7 +1220,7 @@ export function createEmitter<
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-npx vitest run test/emitter.test.ts
+pnpm exec vitest run test/emitter.test.ts
 ```
 
 Expected: PASS — all tests pass.
@@ -1328,7 +1328,7 @@ describe('createEmitter — custom events via schema', () => {
 These tests should already pass because `createEmitter` processes the schema in the constructor.
 
 ```bash
-npx vitest run test/emitter.test.ts
+pnpm exec vitest run test/emitter.test.ts
 ```
 
 Expected: PASS — all tests pass (schema processing already implemented in Task 4).
@@ -1432,7 +1432,7 @@ describe('sticky events', () => {
 - [ ] **Step 2: Run test to verify it passes**
 
 ```bash
-npx vitest run test/sticky.test.ts
+pnpm exec vitest run test/sticky.test.ts
 ```
 
 Expected: PASS — sticky behavior is already implemented in the emitter core (Task 4).
@@ -1552,7 +1552,7 @@ describe('subscribe', () => {
 - [ ] **Step 2: Run tests to verify they pass**
 
 ```bash
-npx vitest run test/subscribe.test.ts
+pnpm exec vitest run test/subscribe.test.ts
 ```
 
 Expected: PASS — `once` and `subscribe` are implemented in emitter core (Task 4).
@@ -1664,7 +1664,7 @@ describe('transformError option', () => {
 - [ ] **Step 2: Run tests**
 
 ```bash
-npx vitest run test/transform.test.ts
+pnpm exec vitest run test/transform.test.ts
 ```
 
 Expected: PASS — transform logic is in the emitter core (Task 4).
@@ -1751,7 +1751,7 @@ describe('destroy', () => {
 - [ ] **Step 2: Run tests**
 
 ```bash
-npx vitest run test/lifecycle.test.ts
+pnpm exec vitest run test/lifecycle.test.ts
 ```
 
 Expected: PASS — destroy is implemented in emitter core (Task 4).
@@ -1870,7 +1870,7 @@ describe('pipe', () => {
 - [ ] **Step 2: Run tests**
 
 ```bash
-npx vitest run test/pipe.test.ts
+pnpm exec vitest run test/pipe.test.ts
 ```
 
 Expected: PASS — pipe is implemented in emitter core (Task 4).
@@ -2081,7 +2081,7 @@ describe('onUnhandledException / offUnhandledException', () => {
 - [ ] **Step 2: Run tests**
 
 ```bash
-npx vitest run test/statics.test.ts
+pnpm exec vitest run test/statics.test.ts
 ```
 
 Expected: PASS — all static methods and promise() are implemented in Task 4.
@@ -2227,7 +2227,7 @@ describe('registry', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-npx vitest run test/registry.test.ts
+pnpm exec vitest run test/registry.test.ts
 ```
 
 Expected: FAIL — cannot find `../src/registry.js`.
@@ -2376,7 +2376,7 @@ Add to `_emitInternal` method, after the listener loop and auto-emits (at the ve
 - [ ] **Step 5: Run registry tests**
 
 ```bash
-npx vitest run test/registry.test.ts
+pnpm exec vitest run test/registry.test.ts
 ```
 
 Expected: PASS.
@@ -2384,7 +2384,7 @@ Expected: PASS.
 - [ ] **Step 6: Run full test suite to verify no regressions**
 
 ```bash
-npx vitest run
+pnpm exec vitest run
 ```
 
 Expected: PASS — all test files pass.
@@ -2491,7 +2491,7 @@ import type { InterfaceMap, DefaultInterfaces } from '../src/types.js';
 - [ ] **Step 3: Run type check**
 
 ```bash
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 ```
 
 Expected: PASS.
@@ -2499,7 +2499,7 @@ Expected: PASS.
 - [ ] **Step 4: Verify all runtime tests still pass**
 
 ```bash
-npx vitest run
+pnpm exec vitest run
 ```
 
 Expected: PASS.
@@ -2521,7 +2521,7 @@ git commit -m "feat: add exports barrel and comprehensive type assertions"
 - [ ] **Step 1: Run full type check**
 
 ```bash
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 ```
 
 Expected: PASS — no type errors.
@@ -2529,7 +2529,7 @@ Expected: PASS — no type errors.
 - [ ] **Step 2: Build the library**
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 Expected: PASS — `dist/` created with `.js`, `.d.ts`, `.d.ts.map`, and `.js.map` files.
@@ -2572,10 +2572,10 @@ node -e "import('jarvis-emitter').then(m => console.log(Object.keys(m)))" 2>/dev
 
 Expected: `OK: function function function object function`
 
-- [ ] **Step 5: Dry-run npm pack**
+- [ ] **Step 5: Dry-run pnpm pack**
 
 ```bash
-npm pack --dry-run
+pnpm pack --dry-run
 ```
 
 Expected: Lists only `dist/` files + `package.json` + `LICENSE` + `README.md`. No `src/`, no `test/`, no `v3-reference/`.
@@ -2583,7 +2583,7 @@ Expected: Lists only `dist/` files + `package.json` + `LICENSE` + `README.md`. N
 - [ ] **Step 6: Run full test suite one final time**
 
 ```bash
-npx vitest run && npx tsc --noEmit
+pnpm exec vitest run && pnpm exec tsc --noEmit
 ```
 
 Expected: All tests pass, no type errors.

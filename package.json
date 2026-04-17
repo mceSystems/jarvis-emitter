@@ -1,26 +1,32 @@
 {
-	"name": "jarvis-emitter",
-	"version": "3.0.0",
-	"description": "Jarvis Emitter",
-	"main": "index",
-	"typings": "index",
-	"scripts": {
-		"test": "mocha test/test.functionality.js",
-		"test:types": "tsc --noEmit test/test.types.ts"
-	},
-	"author": "mce",
-	"dependencies": {
-		"debug": "^4.1.1"
-	},
-	"license": "MIT",
-	"devDependencies": {
-		"@types/mocha": "^5.2.5",
-		"chai": "^4.1.2",
-		"mocha": "^11.7.5",
-		"typescript": "^5.7.3"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/mceSystems/jarvis-emitter"
-	}
+  "name": "jarvis-emitter",
+  "version": "4.0.0-alpha.0",
+  "description": "Typed, schema-first event emitter with transforms, sticky events, and debug registry",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:types": "tsc --noEmit",
+    "prepack": "pnpm run build",
+    "clean": "rm -rf dist"
+  },
+  "author": "mce",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mceSystems/jarvis-emitter"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.1.1"
+  }
 }

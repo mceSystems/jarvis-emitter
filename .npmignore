@@ -1,2 +1,8 @@
 .git
-test*
+test
+src
+v3-reference
+vitest.config.ts
+tsconfig.json
+tsconfig.build.json
+docs
