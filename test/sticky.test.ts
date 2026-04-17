@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmitter } from '../src/emitter.js';
-import { event } from '../src/roles.js';
+import { event, doneType, errorType } from '../src/roles.js';
 
 describe('sticky events', () => {
   it('done is sticky by default — late subscriber gets the value', () => {
-    const em = createEmitter<string>();
+    const em = createEmitter({ done: doneType<string>() });
     em.emit.done('early');
     const listener = vi.fn();
     em.on.done(listener);
@@ -12,7 +12,10 @@ describe('sticky events', () => {
   });
 
   it('error is sticky by default', () => {
-    const em = createEmitter<string, string>();
+    const em = createEmitter({
+      done: doneType<string>(),
+      error: errorType<string>(),
+    });
     em.emit.error('fail');
     const listener = vi.fn();
     em.on.error(listener);
@@ -20,7 +23,7 @@ describe('sticky events', () => {
   });
 
   it('custom event with sticky replays to late subscriber', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>({ sticky: true }),
     });
     em.emit.status('ready');
@@ -30,7 +33,7 @@ describe('sticky events', () => {
   });
 
   it('custom event without sticky does not replay', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>(),
     });
     em.emit.status('ready');
@@ -40,7 +43,7 @@ describe('sticky events', () => {
   });
 
   it('sticky replays multiple emissions', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       log: event<string>({ sticky: true }),
     });
     em.emit.log('first');
@@ -53,7 +56,7 @@ describe('sticky events', () => {
   });
 
   it('stickyLast only replays the last emission', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>({ stickyLast: true }),
     });
     em.emit.status('first');
@@ -65,7 +68,7 @@ describe('sticky events', () => {
   });
 
   it('stickyLast replays to late async subscriber', async () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>({ stickyLast: true }),
     });
     em.emit.status('hello');

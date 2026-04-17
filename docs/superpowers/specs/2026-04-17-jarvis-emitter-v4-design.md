@@ -87,43 +87,52 @@ jarvis-emitter/
 ### Factory function
 
 ```ts
-import { createEmitter, event, notify } from 'jarvis-emitter';
+import { createEmitter, event, notify, doneType, errorType } from 'jarvis-emitter';
 ```
 
-`createEmitter<DoneType = unknown, ErrorType = unknown>(schema?, options?)` — factory function, not `new` constructor.
+`createEmitter<const S extends EmitterSchema>(schema?, options?)` — factory function, not `new` constructor.
 
-- `DoneType` defaults to `unknown` — compiles without a generic, but listeners receive `unknown` which forces narrowing before use (type assertions are prohibited by linter in the monorepo, so this effectively pushes developers to type upfront)
-- `ErrorType` defaults to `unknown` — same rationale
+**Schema-inferred typing.** All payload types come from the schema. There are no `DoneType`/`ErrorType` generics on `createEmitter`. This is a deliberate constraint: TypeScript cannot partially infer generics (when a user specifies some type arguments explicitly, the rest fall back to defaults rather than being inferred from call-site arguments). By keeping a single inferred generic `S`, types always flow through cleanly without the `<void>` / `<SensorReading>` boilerplate fighting the inference engine.
+
+To type the default `done` and `error` interfaces, declare them in the schema using the `doneType<T>()` and `errorType<T>()` phantom helpers. Omitting them falls back to `unknown`, which nudges callers to narrow at the boundary.
 
 ### Default interfaces
 
-Every emitter ships with `done`, `error`, `always`, `catch`, `tap` — derived automatically from `DoneType` and `ErrorType`. These are never declared in the schema.
+Every emitter ships with `done`, `error`, `always`, `catch`, `tap`. `done` and `error` receive their payload types from `doneType<T>()`/`errorType<T>()` entries in the schema when present, otherwise they default to `unknown`. `always` is `done | error`. `catch` is always `Error`. `tap` is always `TapPayload`.
+
+`always`, `catch`, `tap` cannot be redeclared in the schema — they are reserved.
 
 ### Role helpers
 
-Two role helpers for custom events:
+Four role helpers:
 
-- `event<T>(options?)` — for events that occur during operation (status changes, data arrivals)
-- `notify<T>(options?)` — for notifications/commands sent during operation
+- `event<T>(options?)` — events that occur during operation (status changes, data arrivals)
+- `notify<T>(options?)` — notifications/commands sent during operation
+- `doneType<T>()` — phantom marker that sets the `done` payload type. Type-level only; no options.
+- `errorType<T>()` — phantom marker that sets the `error` payload type. Type-level only; no options.
 
-Options: `{ sticky?: boolean, stickyLast?: boolean }`
+Options for `event`/`notify`: `{ sticky?: boolean, stickyLast?: boolean }`
 
-No generic on the helper = `void` payload.
+No generic on `event`/`notify` = `void` payload.
 
 ### Usage examples
 
 ```ts
-// Basic: just done/error
-const req = createEmitter<AgeRangeResult>();
+// Basic: just done (error stays unknown)
+const req = createEmitter({ done: doneType<AgeRangeResult>() });
 req.on.done((result) => result.ageRange);  // AgeRangeResult
 req.emit.done({ ageRange: 18 });
 
 // With custom error type
-const req2 = createEmitter<AgeRangeResult, ServiceError>();
+const req2 = createEmitter({
+  done: doneType<AgeRangeResult>(),
+  error: errorType<ServiceError>(),
+});
 req2.on.error((err) => err.code);  // ServiceError
 
 // With custom events
-const sensor = createEmitter<SensorReading>({
+const sensor = createEmitter({
+  done:       doneType<SensorReading>(),
   calibrated: event({ sticky: true }),
   status:     notify<SensorStatus>(),
 });
@@ -131,6 +140,10 @@ const sensor = createEmitter<SensorReading>({
 sensor.on.done((r) => r.value);          // SensorReading
 sensor.on.calibrated(() => {});           // void
 sensor.on.status((s) => s.health);        // SensorStatus
+
+// No schema at all — all types are unknown, caller narrows
+const bare = createEmitter();
+bare.on.done((v) => { /* v is unknown */ });
 ```
 
 ### What's dropped from v3
@@ -153,9 +166,15 @@ Two APIs replacing the old `middleware` namespace.
 Declared at creation time:
 
 ```ts
-const req = createEmitter<AgeRangeResult, ServiceError>({}, {
-  transformError: (raw) => stringToError(String(raw)),
-});
+const req = createEmitter(
+  {
+    done: doneType<AgeRangeResult>(),
+    error: errorType<ServiceError>(),
+  },
+  {
+    transformError: (raw) => stringToError(String(raw)),
+  },
+);
 
 req.on.error((err) => err.code);  // ServiceError
 ```
@@ -293,7 +312,8 @@ raw.pipe(parsed, { received: 'data' });
 ```ts
 import { registry } from 'jarvis-emitter';
 
-const sensor = createEmitter<SensorReading>({
+const sensor = createEmitter({
+  done: doneType<SensorReading>(),
   status: event<SensorStatus>(),
 }, {
   label: 'SensorService',  // optional, for identification
@@ -426,7 +446,7 @@ sensor.destroy();
 export { createEmitter } from './emitter';
 
 // Role helpers
-export { event, notify } from './roles';
+export { event, notify, doneType, errorType } from './roles';
 
 // Class (for static methods, instanceof checks, type usage)
 export { JarvisEmitter } from './emitter';
@@ -439,9 +459,11 @@ export { EmitterTimeoutError } from './emitter';
 
 // Type exports
 export type {
-  DefaultInterfaces,
   EmitterSchema,
   EmitterOptions,
+  InterfaceMap,
+  DoneTypeOf,
+  ErrorTypeOf,
   RegistryEntry,
 } from './types';
 ```
@@ -487,7 +509,7 @@ Migration assistant for v3 → v4:
 ## Migration Path
 
 1. Publish v4 to npm
-2. Update monorepo import: `import { createEmitter, event, notify } from 'jarvis-emitter'`
+2. Update monorepo import: `import { createEmitter, event, notify, doneType, errorType } from 'jarvis-emitter'`
 3. Use `jarvis-emitter:migrate-v3` skill to convert usage patterns file-by-file
 4. Monorepo-wide search for remaining `emitify` usages — convert to `emitifyFromAsync` + async/await where meaco is already removed
 5. Remove `emitify` in a future minor version once all usages are migrated

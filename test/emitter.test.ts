@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmitter } from '../src/emitter.js';
-import { event, notify } from '../src/roles.js';
+import { event, notify, doneType, errorType } from '../src/roles.js';
 
 describe('createEmitter — default interfaces', () => {
   describe('on/emit', () => {
     it('emits done to a registered listener', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const listener = vi.fn();
       em.on.done(listener);
       em.emit.done('hello');
@@ -13,7 +13,10 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('emits error to a registered listener', () => {
-      const em = createEmitter<string, Error>();
+      const em = createEmitter({
+        done: doneType<string>(),
+        error: errorType<Error>(),
+      });
       const listener = vi.fn();
       em.on.error(listener);
       const err = new Error('fail');
@@ -22,7 +25,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('emits always when done is emitted', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const listener = vi.fn();
       em.on.always(listener);
       em.emit.done('hello');
@@ -30,7 +33,10 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('emits always when error is emitted', () => {
-      const em = createEmitter<string, string>();
+      const em = createEmitter({
+        done: doneType<string>(),
+        error: errorType<string>(),
+      });
       const listener = vi.fn();
       em.on.always(listener);
       em.emit.error('fail');
@@ -38,7 +44,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('emits tap when done is emitted', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const listener = vi.fn();
       em.on.tap(listener);
       em.emit.done('hello');
@@ -50,7 +56,10 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('emits tap when error is emitted', () => {
-      const em = createEmitter<string, string>();
+      const em = createEmitter({
+        done: doneType<string>(),
+        error: errorType<string>(),
+      });
       const listener = vi.fn();
       em.on.tap(listener);
       em.emit.error('fail');
@@ -62,7 +71,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('does not emit tap for always or tap itself', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const listener = vi.fn();
       em.on.tap(listener);
       em.emit.done('hello');
@@ -70,7 +79,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('supports multiple listeners on the same event', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const l1 = vi.fn();
       const l2 = vi.fn();
       em.on.done(l1);
@@ -83,7 +92,7 @@ describe('createEmitter — default interfaces', () => {
 
   describe('on returns unsubscribe', () => {
     it('returns a function that removes the listener', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const listener = vi.fn();
       const unsub = em.on.done(listener);
       unsub();
@@ -92,7 +101,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('only removes the specific listener', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const l1 = vi.fn();
       const l2 = vi.fn();
       const unsub1 = em.on.done(l1);
@@ -106,7 +115,7 @@ describe('createEmitter — default interfaces', () => {
 
   describe('off', () => {
     it('removes all listeners when called without argument', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const l1 = vi.fn();
       const l2 = vi.fn();
       em.on.done(l1);
@@ -118,7 +127,7 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('removes a specific listener when passed as argument', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const l1 = vi.fn();
       const l2 = vi.fn();
       em.on.done(l1);
@@ -132,7 +141,7 @@ describe('createEmitter — default interfaces', () => {
 
   describe('catch', () => {
     it('catches exceptions thrown in done listeners', () => {
-      const em = createEmitter<string>();
+      const em = createEmitter({ done: doneType<string>() });
       const catchListener = vi.fn();
       em.on.catch(catchListener);
       em.on.done(() => {
@@ -145,7 +154,10 @@ describe('createEmitter — default interfaces', () => {
     });
 
     it('catches exceptions thrown in error listeners', () => {
-      const em = createEmitter<string, string>();
+      const em = createEmitter({
+        done: doneType<string>(),
+        error: errorType<string>(),
+      });
       const catchListener = vi.fn();
       em.on.catch(catchListener);
       em.on.error(() => {
@@ -159,7 +171,7 @@ describe('createEmitter — default interfaces', () => {
 
 describe('createEmitter — custom events via schema', () => {
   it('registers custom event from schema', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>(),
     });
     const listener = vi.fn();
@@ -169,7 +181,7 @@ describe('createEmitter — custom events via schema', () => {
   });
 
   it('registers custom notify from schema', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       command: notify<{ action: string }>(),
     });
     const listener = vi.fn();
@@ -179,7 +191,7 @@ describe('createEmitter — custom events via schema', () => {
   });
 
   it('supports multiple custom events', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>(),
       progress: event<number>(),
     });
@@ -194,7 +206,8 @@ describe('createEmitter — custom events via schema', () => {
   });
 
   it('custom events coexist with default events', () => {
-    const em = createEmitter<string>({
+    const em = createEmitter({
+      done: doneType<string>(),
       status: event<number>(),
     });
     const doneListener = vi.fn();
@@ -208,7 +221,7 @@ describe('createEmitter — custom events via schema', () => {
   });
 
   it('tap fires for custom events', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>(),
     });
     const tapListener = vi.fn();
@@ -222,7 +235,7 @@ describe('createEmitter — custom events via schema', () => {
   });
 
   it('unsub works for custom events', () => {
-    const em = createEmitter<void>({
+    const em = createEmitter({
       status: event<string>(),
     });
     const listener = vi.fn();

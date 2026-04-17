@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { event, notify } from '../src/roles.js';
+import { event, notify, doneType, errorType } from '../src/roles.js';
 
 describe('event()', () => {
   it('returns a config with role "event"', () => {
@@ -39,5 +39,19 @@ describe('notify()', () => {
   it('accepts sticky option', () => {
     const config = notify({ sticky: true });
     expect(config.sticky).toBe(true);
+  });
+});
+
+describe('doneType()', () => {
+  it('returns a config with role "done"', () => {
+    const config = doneType<string>();
+    expect(config.role).toBe('done');
+  });
+});
+
+describe('errorType()', () => {
+  it('returns a config with role "error"', () => {
+    const config = errorType<Error>();
+    expect(config.role).toBe('error');
   });
 });

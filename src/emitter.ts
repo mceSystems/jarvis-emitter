@@ -6,6 +6,7 @@ import type {
   Listener,
   TransformFn,
   TapPayload,
+  DoneTypeOf,
 } from './types.js';
 import { EmitterTimeoutError } from './types.js';
 
@@ -21,37 +22,27 @@ interface InterfaceEntry {
 
 const unhandledExceptionCallbacks: Listener<any>[] = [];
 
-type Interfaces<DoneType, ErrorType, Schema extends EmitterSchema> =
-  InterfaceMap<DoneType, ErrorType, Schema>;
+type I<S extends EmitterSchema> = InterfaceMap<S>;
 
-type OnNamespace<DoneType, ErrorType, Schema extends EmitterSchema> = {
-  [K in keyof Interfaces<DoneType, ErrorType, Schema>]:
-    (listener: Listener<Interfaces<DoneType, ErrorType, Schema>[K]>) => Unsubscribe;
+type OnNamespace<S extends EmitterSchema> = {
+  [K in keyof I<S>]: (listener: Listener<I<S>[K]>) => Unsubscribe;
 };
 
-type OnceNamespace<DoneType, ErrorType, Schema extends EmitterSchema> =
-  OnNamespace<DoneType, ErrorType, Schema>;
+type OnceNamespace<S extends EmitterSchema> = OnNamespace<S>;
 
-type EmitNamespace<DoneType, ErrorType, Schema extends EmitterSchema> = {
-  [K in keyof Interfaces<DoneType, ErrorType, Schema>]:
-    (value: Interfaces<DoneType, ErrorType, Schema>[K]) => void;
+type EmitNamespace<S extends EmitterSchema> = {
+  [K in keyof I<S>]: (value: I<S>[K]) => void;
 };
 
-type OffNamespace<DoneType, ErrorType, Schema extends EmitterSchema> = {
-  [K in keyof Interfaces<DoneType, ErrorType, Schema>]:
-    (listener?: Listener<Interfaces<DoneType, ErrorType, Schema>[K]>) => void;
+type OffNamespace<S extends EmitterSchema> = {
+  [K in keyof I<S>]: (listener?: Listener<I<S>[K]>) => void;
 };
 
-type TransformNamespace<DoneType, ErrorType, Schema extends EmitterSchema> = {
-  [K in keyof Interfaces<DoneType, ErrorType, Schema>]:
-    (fn: TransformFn<Interfaces<DoneType, ErrorType, Schema>[K]>) => void;
+type TransformNamespace<S extends EmitterSchema> = {
+  [K in keyof I<S>]: (fn: TransformFn<I<S>[K]>) => void;
 };
 
-export class JarvisEmitter<
-  DoneType = unknown,
-  ErrorType = unknown,
-  Schema extends EmitterSchema = {},
-> {
+export class JarvisEmitter<Schema extends EmitterSchema = {}> {
   /** @internal */
   readonly _interfaces = new Map<string, InterfaceEntry>();
   /** @internal */
@@ -59,15 +50,15 @@ export class JarvisEmitter<
   /** @internal */
   readonly _label: string;
 
-  readonly on: OnNamespace<DoneType, ErrorType, Schema>;
-  readonly once: OnceNamespace<DoneType, ErrorType, Schema>;
-  readonly emit: EmitNamespace<DoneType, ErrorType, Schema>;
-  readonly off: OffNamespace<DoneType, ErrorType, Schema>;
-  readonly transform: TransformNamespace<DoneType, ErrorType, Schema>;
+  readonly on: OnNamespace<Schema>;
+  readonly once: OnceNamespace<Schema>;
+  readonly emit: EmitNamespace<Schema>;
+  readonly off: OffNamespace<Schema>;
+  readonly transform: TransformNamespace<Schema>;
 
   constructor(
     schema: Schema = {} as Schema,
-    options?: EmitterOptions<ErrorType>,
+    options?: EmitterOptions<Schema>,
   ) {
     this._label = options?.label ?? `emitter_${++JarvisEmitter._idCounter}`;
 
@@ -78,6 +69,8 @@ export class JarvisEmitter<
     this._registerInterface('tap', 'observe', false, false);
 
     for (const [name, config] of Object.entries(schema)) {
+      // done/error are phantom type markers — already registered as defaults
+      if (name === 'done' || name === 'error') continue;
       const sticky = config.stickyLast ? true : (config.sticky ?? false);
       const stickyLast = config.stickyLast ?? false;
       this._registerInterface(name, config.role, sticky, stickyLast);
@@ -235,38 +228,45 @@ export class JarvisEmitter<
     };
   }
 
-  private _buildOnNamespace(): OnNamespace<DoneType, ErrorType, Schema> {
+  private _buildOnNamespace(): OnNamespace<Schema> {
     const ns: Record<string, any> = {};
     for (const name of this._interfaces.keys()) {
       ns[name] = (listener: Listener<any>) => this._addListener(name, listener);
     }
-    return ns as OnNamespace<DoneType, ErrorType, Schema>;
+    return ns as OnNamespace<Schema>;
   }
 
-  private _buildOnceNamespace(): OnceNamespace<DoneType, ErrorType, Schema> {
+  private _buildOnceNamespace(): OnceNamespace<Schema> {
     const ns: Record<string, any> = {};
     for (const name of this._interfaces.keys()) {
       ns[name] = (listener: Listener<any>) => {
-        let unsub: Unsubscribe = () => {};
-        unsub = this._addListener(name, (value: any) => {
-          unsub();
+        let fired = false;
+        let unsub: Unsubscribe | undefined;
+        const wrapped = (value: any) => {
+          if (fired) return;
+          fired = true;
+          if (unsub) unsub();
           listener(value);
-        });
-        return unsub;
+        };
+        unsub = this._addListener(name, wrapped);
+        if (fired) unsub();
+        return () => {
+          if (!fired) unsub!();
+        };
       };
     }
-    return ns as OnceNamespace<DoneType, ErrorType, Schema>;
+    return ns as OnceNamespace<Schema>;
   }
 
-  private _buildEmitNamespace(): EmitNamespace<DoneType, ErrorType, Schema> {
+  private _buildEmitNamespace(): EmitNamespace<Schema> {
     const ns: Record<string, any> = {};
     for (const name of this._interfaces.keys()) {
       ns[name] = (value: any) => this._emitInternal(name, value);
     }
-    return ns as EmitNamespace<DoneType, ErrorType, Schema>;
+    return ns as EmitNamespace<Schema>;
   }
 
-  private _buildOffNamespace(): OffNamespace<DoneType, ErrorType, Schema> {
+  private _buildOffNamespace(): OffNamespace<Schema> {
     const ns: Record<string, any> = {};
     for (const name of this._interfaces.keys()) {
       ns[name] = (listener?: Listener<any>) => {
@@ -283,10 +283,10 @@ export class JarvisEmitter<
         }
       };
     }
-    return ns as OffNamespace<DoneType, ErrorType, Schema>;
+    return ns as OffNamespace<Schema>;
   }
 
-  private _buildTransformNamespace(): TransformNamespace<DoneType, ErrorType, Schema> {
+  private _buildTransformNamespace(): TransformNamespace<Schema> {
     const ns: Record<string, any> = {};
     for (const name of this._interfaces.keys()) {
       ns[name] = (fn: TransformFn<any>) => {
@@ -296,13 +296,12 @@ export class JarvisEmitter<
         entry.transforms.push(fn);
       };
     }
-    return ns as TransformNamespace<DoneType, ErrorType, Schema>;
+    return ns as TransformNamespace<Schema>;
   }
 
   subscribe(
     listeners: Partial<{
-      [K in keyof Interfaces<DoneType, ErrorType, Schema>]:
-        Listener<Interfaces<DoneType, ErrorType, Schema>[K]>;
+      [K in keyof I<Schema>]: Listener<I<Schema>[K]>;
     }>,
   ): Unsubscribe {
     this._assertValid();
@@ -319,8 +318,8 @@ export class JarvisEmitter<
     };
   }
 
-  promise(options?: { timeout?: number }): Promise<DoneType> {
-    return new Promise<DoneType>((resolve, reject) => {
+  promise(options?: { timeout?: number }): Promise<DoneTypeOf<Schema>> {
+    return new Promise<DoneTypeOf<Schema>>((resolve, reject) => {
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
       this.on.done(((value: any) => {
@@ -347,7 +346,7 @@ export class JarvisEmitter<
   }
 
   pipe(
-    destination: JarvisEmitter<any, any, any>,
+    destination: JarvisEmitter<any>,
     mapping?: string[] | Record<string, string>,
   ): this {
     this._assertValid();
@@ -390,16 +389,16 @@ export class JarvisEmitter<
     this._destroyed = true;
   }
 
-  static all<J extends JarvisEmitter<any, any, any>[]>(
+  static all<J extends JarvisEmitter<any>[]>(
     ...emitters: J
-  ): JarvisEmitter<{ [I in keyof J]: J[I] extends JarvisEmitter<infer D, any, any> ? D : never }> {
+  ): JarvisEmitter<any> {
     const result = new JarvisEmitter<any>();
     const results: any[] = [];
     let received = 0;
 
     if (emitters.length === 0) {
       (result.emit as any).done([]);
-      return result as any;
+      return result;
     }
 
     for (let i = 0; i < emitters.length; i++) {
@@ -415,19 +414,19 @@ export class JarvisEmitter<
       });
     }
 
-    return result as any;
+    return result;
   }
 
-  static some<J extends JarvisEmitter<any, any, any>[]>(
+  static some<J extends JarvisEmitter<any>[]>(
     ...emitters: J
-  ): JarvisEmitter<{ [I in keyof J]: (J[I] extends JarvisEmitter<infer D, any, any> ? D : never) | undefined }> {
+  ): JarvisEmitter<any> {
     const result = new JarvisEmitter<any>();
     const results: any[] = [];
     let received = 0;
 
     if (emitters.length === 0) {
       (result.emit as any).done([]);
-      return result as any;
+      return result;
     }
 
     for (let i = 0; i < emitters.length; i++) {
@@ -447,23 +446,23 @@ export class JarvisEmitter<
       });
     }
 
-    return result as any;
+    return result;
   }
 
   static immediate<T>(
     result: T,
     eventName: string = 'done',
-  ): JarvisEmitter<T> {
-    const em = new JarvisEmitter<T>();
+  ): JarvisEmitter<any> {
+    const em = new JarvisEmitter<any>();
     (em as any)._emitInternal(eventName, result);
     return em;
   }
 
   static emitifyFromAsync<I extends any[], O>(
     fn: (...args: I) => Promise<O>,
-  ): (...callArgs: I) => JarvisEmitter<O> {
+  ): (...callArgs: I) => JarvisEmitter<any> {
     return (...callArgs: I) => {
-      const em = new JarvisEmitter<O>();
+      const em = new JarvisEmitter<any>();
       fn(...callArgs)
         .then((result) => {
           (em.emit as any).done(result);
@@ -482,9 +481,9 @@ export class JarvisEmitter<
     fn: (...args: any[]) => any,
     resultsAsArray: boolean = true,
     cbIndex?: number,
-  ): (...callArgs: any[]) => JarvisEmitter<unknown> {
+  ): (...callArgs: any[]) => JarvisEmitter<any> {
     return (...callArgs: any[]) => {
-      const em = new JarvisEmitter<unknown>();
+      const em = new JarvisEmitter<any>();
       const idx = cbIndex === undefined ? callArgs.length : cbIndex;
       callArgs.splice(idx, 0, (...cbArgs: any[]) => {
         if (resultsAsArray) {
@@ -509,16 +508,9 @@ export class JarvisEmitter<
   }
 }
 
-export function createEmitter<
-  DoneType = unknown,
-  ErrorType = unknown,
-  const S extends EmitterSchema = {},
->(
+export function createEmitter<const S extends EmitterSchema = {}>(
   schema?: S,
-  options?: EmitterOptions<ErrorType>,
-): JarvisEmitter<DoneType, ErrorType, S> {
-  return new JarvisEmitter<DoneType, ErrorType, S>(
-    schema ?? ({} as S),
-    options,
-  );
+  options?: EmitterOptions<S>,
+): JarvisEmitter<S> {
+  return new JarvisEmitter<S>(schema ?? ({} as S), options);
 }
