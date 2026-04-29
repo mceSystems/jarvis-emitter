@@ -1,6 +1,8 @@
 # jarvis-emitter
 
-A typed, extensible event emitter with middleware support, sticky events, and promise interop.
+A typed, schema-first event emitter with transforms, sticky events, promise interop, and a debug registry. Pure ESM, written in TypeScript.
+
+> **v4** is a breaking rewrite of the v3 plain-JS library. The `extend()` chain API, `call` namespace, `middleware` system, and CJS output are gone — see the [v3 → v4 migration](#v3--v4-migration) section.
 
 ## Install
 
@@ -8,140 +10,307 @@ A typed, extensible event emitter with middleware support, sticky events, and pr
 npm install jarvis-emitter
 ```
 
-The package is published as **CommonJS** (`module.exports`). Type definitions use `export =`, which matches that shape.
+The package is published as **ESM only**. Requires Node 18+.
 
-### Importing (JavaScript and TypeScript)
-
-Pick one pattern:
-
-| Style | Example |
-|--------|---------|
-| **CommonJS** | `const JarvisEmitter = require("jarvis-emitter");` |
-| **TypeScript, no `esModuleInterop`** | `import JarvisEmitter = require("jarvis-emitter");` |
-| **TypeScript / bundlers with `esModuleInterop: true`** | `import JarvisEmitter, { Role, payload, type DefaultInterfaces } from "jarvis-emitter";` |
-
-**Types:** `Role`, `Property`, `PropertyDescriptor`, `DefaultInterfaces`, and `payload` live on the merged `JarvisEmitter` namespace in the typings. Destructured imports like `{ Role, payload }` work when `esModuleInterop` is enabled. With `import JarvisEmitter = require("jarvis-emitter")`, use `JarvisEmitter.Role`, `JarvisEmitter.payload`, and the same pattern for other names. At runtime, `JarvisEmitter.Role` and `JarvisEmitter.payload` are also available on the constructor object from JS.
+```ts
+import { createEmitter, event, notify, doneType, errorType, registry } from 'jarvis-emitter';
+```
 
 ## Quick Start
 
-```js
-const JarvisEmitter = require("jarvis-emitter");
+```ts
+import { createEmitter, doneType, errorType } from 'jarvis-emitter';
 
-const emitter = new JarvisEmitter();
+const req = createEmitter({
+  done: doneType<{ ageRange: number }>(),
+  error: errorType<Error>(),
+});
 
-emitter.on.done((result) => console.log("Done:", result));
-emitter.on.error((err) => console.error("Error:", err));
+req.on.done((result) => console.log('Done:', result.ageRange));
+req.on.error((err) => console.error('Error:', err.message));
 
-emitter.call.done("success");
+req.emit.done({ ageRange: 18 });
 ```
 
-## Extending with Custom Events
+## Core Concepts
 
-```js
-const emitter = new JarvisEmitter()
-  .extend({ name: "progress", role: JarvisEmitter.role.event })
-  .extend({ name: "status", role: JarvisEmitter.role.notify });
+### Schema-first design
 
-emitter.on.progress((pct) => console.log(`${pct}%`));
-emitter.call.progress(42);
+You declare the event shape up front. All payload types flow from a single inferred schema generic — no boilerplate type arguments per emitter.
+
+```ts
+const sensor = createEmitter({
+  done:       doneType<SensorReading>(),
+  error:      errorType<ServiceError>(),
+  calibrated: event({ sticky: true }),
+  status:     notify<SensorStatus>(),
+});
+
+sensor.on.done((r) => r.value);     // SensorReading
+sensor.on.status((s) => s.health);  // SensorStatus
+sensor.on.calibrated(() => {});     // void
 ```
 
-### TypeScript
+### Default interfaces
 
-Payload types for custom names are spelled with **`withType()`** (chain-friendly) or **`payload()`** (inline on the descriptor). The old **`extend<"name", Type>(...)`** generic style is not supported; use one of the patterns below.
+Every emitter ships with five built-ins:
 
-**Chaining:** TypeScript only refines the emitter type from **chained** return values (e.g. `.withType<T>().extend(...).withType<U>().extend(...)`). If you assign `const em = new JarvisEmitter()` and call `em.extend(...)` several times without reassigning from the return value, the variable’s type does not pick up the new keys.
+| Name      | Payload type                           | Notes                                                  |
+| --------- | -------------------------------------- | ------------------------------------------------------ |
+| `done`    | from `doneType<T>()`, else `unknown`   | Sticky by default                                      |
+| `error`   | from `errorType<T>()`, else `unknown`  | Sticky by default                                      |
+| `always`  | `done \| error`                        | Sticky; fires after either `done` or `error`           |
+| `catch`   | `Error`                                | Catches exceptions thrown inside listeners             |
+| `tap`     | `{ name, role, data }`                 | Fires for every other emission (debug/tracing)         |
 
-```typescript
-import JarvisEmitter, { Role, payload, type DefaultInterfaces } from "jarvis-emitter";
+`always`, `catch`, and `tap` are reserved — they cannot be redeclared in a schema.
 
-type SensorStatus = {
-	value: number;
-	health: "ok" | "bad" | "error";
-};
+### Role helpers
 
-type DoneType = string;
-type ErrorType = Error;
+| Helper             | Purpose                                                                         |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `event<T>(opts?)`  | Custom event during operation (status changes, data arrivals)                   |
+| `notify<T>(opts?)` | Custom notification/command                                                     |
+| `doneType<T>()`    | Phantom marker that types the default `done` payload                            |
+| `errorType<T>()`   | Phantom marker that types the default `error` payload                           |
 
-// Option 1 — withType(): separate payload type from the inferred event name (good for chains)
-const emitter1 = new JarvisEmitter<DoneType, ErrorType>()
-	.withType<SensorStatus>()
-	.extend({ name: "changed", role: Role.event });
+`event` / `notify` accept `{ sticky?: boolean, stickyLast?: boolean }`. No generic argument means the payload is `void`.
 
-// Option 2 — payload(): inline emittedType without type assertions (runtime value is unused)
-const emitter2 = new JarvisEmitter<DoneType, ErrorType>().extend({
-	name: "changed",
-	role: Role.event,
-	emittedType: payload<SensorStatus>(),
-});
+### Unknown by default
 
-// Option 3 — explicit interface map (best when you already model all events as one type)
-interface SensorInterfaces extends DefaultInterfaces<DoneType, ErrorType> {
-	changed: SensorStatus;
-}
+Omitting `doneType` / `errorType` leaves those payloads as `unknown`, nudging callers to narrow at the boundary instead of leaking `any`:
 
-const emitter3 = new JarvisEmitter<DoneType, ErrorType, SensorInterfaces>().extend({
-	name: "changed",
-	role: Role.event,
-});
-
-emitter1.on.changed((pct) => {
-	pct.health; // SensorStatus
-});
-emitter2.on.changed((pct) => {
-	pct.value; // SensorStatus
-});
-emitter3.on.done((val) => {
-	val; // string (DoneType)
+```ts
+const bare = createEmitter();
+bare.on.done((v) => {
+  // v: unknown — narrow before use
 });
 ```
 
-New keys added with a plain descriptor (no `withType` / `payload` / interface entry) are typed as **`void`** payloads.
+## Subscriptions
 
-## Middleware
+### `on` — returns an unsubscribe
 
-Transform emitted values before they reach listeners:
-
-```js
-emitter.middleware.done((next, val) => {
-  next(val.toUpperCase());
-});
+```ts
+const unsub = sensor.on.done((r) => console.log(r.value));
+unsub();
 ```
+
+### `once` — auto-unsubscribes after first emission
+
+```ts
+sensor.once.done((r) => console.log('first reading:', r.value));
+```
+
+Sticky events replay once into `once`, then the listener detaches.
+
+### `off` — bulk or specific removal
+
+```ts
+sensor.off.done();              // remove every done listener
+sensor.off.done(specificListener); // remove one
+```
+
+### `subscribe` — bulk registration
+
+```ts
+const unsub = sensor.subscribe({
+  done:   (r) => handleReading(r),
+  error:  (e) => handleError(e),
+  status: (s) => handleStatus(s),
+});
+unsub(); // detaches all of the above
+```
+
+Only schema keys are valid; payload types flow through.
+
+## Emitting
+
+```ts
+sensor.emit.done({ value: 42 });
+sensor.emit.status({ health: 'ok' });
+sensor.emit.error(new ServiceError('boom'));
+```
+
+The `emit` namespace replaces v3's `call`.
 
 ## Sticky Events
 
-Events that replay to late subscribers:
+Sticky events replay to late subscribers.
 
-```js
-const emitter = new JarvisEmitter();
-emitter.call.done("already resolved");
-
-// Late subscriber still receives the value
-emitter.on.done((val) => console.log(val)); // "already resolved"
+```ts
+const em = createEmitter({ done: doneType<string>() });
+em.emit.done('already resolved');
+em.on.done((v) => console.log(v)); // 'already resolved'
 ```
+
+`done` and `error` are sticky by default. For custom events, opt in:
+
+```ts
+const em = createEmitter({
+  log:    event<string>({ sticky: true }),     // replay every emission
+  status: event<string>({ stickyLast: true }), // replay only the last one
+});
+```
+
+## Transforms
+
+Transforms run before listeners and **compose** in registration order. Returns are pure — no `next()` callback.
+
+```ts
+const em = createEmitter({ done: doneType<number>() });
+em.transform.done((v) => v * 2);
+em.transform.done((v) => v + 1);
+em.on.done((v) => console.log(v)); // emit.done(5) → 11
+```
+
+Transforms also apply to sticky replay.
+
+### `transformError` option
+
+Coerce raw error values into a typed error class at creation time:
+
+```ts
+class ServiceError extends Error {
+  constructor(msg: string, public code: number) { super(msg); }
+}
+
+const req = createEmitter(
+  {
+    done:  doneType<string>(),
+    error: errorType<ServiceError>(),
+  },
+  {
+    transformError: (raw) => new ServiceError(String(raw), 500),
+  },
+);
+```
+
+`transformError` runs first, then any `transform.error(...)` you register.
+
+## Pipe
+
+Forward emissions to another emitter.
+
+```ts
+// All matching event names
+src.pipe(dest);
+
+// Selected names only
+src.pipe(dest, ['done', 'status']);
+
+// Rename: src.received → dest.data
+src.pipe(dest, { received: 'data' });
+```
+
+Returns the source emitter for chaining. Forwarding is synchronous; events the destination doesn't have are silently skipped.
 
 ## Promise Interop
 
-```js
-const result = await emitter.promise();
+```ts
+const result = await sensor.promise();
+// or with a timeout
+const result = await sensor.promise({ timeout: 5000 });
+```
+
+Resolves on `done`, rejects on `error` or `catch`. On timeout, rejects with `EmitterTimeoutError`:
+
+```ts
+import { EmitterTimeoutError } from 'jarvis-emitter';
+
+try {
+  await sensor.promise({ timeout: 5000 });
+} catch (e) {
+  if (e instanceof EmitterTimeoutError) {
+    console.log(`Timed out after ${e.ms}ms`);
+  }
+}
 ```
 
 ## Static Helpers
 
-```js
-// Wait for all emitters
-const all = JarvisEmitter.all(emitterA, emitterB);
+```ts
+import { JarvisEmitter } from 'jarvis-emitter';
 
-// Wait for all, treating errors as undefined
-const some = JarvisEmitter.some(emitterA, emitterB);
+// Wait for all — rejects if any errors
+JarvisEmitter.all(a, b, c).on.done(([va, vb, vc]) => { /* ... */ });
+
+// Wait for all — errors become undefined, never rejects
+JarvisEmitter.some(a, b).on.done(([va, vb]) => { /* ... */ });
+
+// Pre-resolved (sticky)
+const cached = JarvisEmitter.immediate(reading);
 
 // Wrap an async function
-const emitified = JarvisEmitter.emitifyFromAsync(fetchData);
+const fetchEm = JarvisEmitter.emitifyFromAsync(fetchSensorData);
+const em = fetchEm(sensorId);
+em.on.done((data) => { /* ... */ });
 ```
 
-## Default Events
+`JarvisEmitter.emitify(fn, resultsAsArray?, cbIndex?)` is **deprecated**, kept for legacy callback-style APIs. Prefer `emitifyFromAsync` with `async`/`await`.
 
-Every emitter ships with: `done`, `error`, `always`, `catch`, `event`, `notify`, `tap`.
+## Lifecycle
+
+```ts
+sensor.destroy();
+```
+
+Purges all listeners, transforms, and sticky state, and deregisters from the debug registry. Subsequent calls to `on` / `emit` / `off` / `transform` / `subscribe` throw.
+
+## Debug Registry
+
+Every emitter auto-registers on creation. Pass a `label` for identification.
+
+```ts
+import { registry } from 'jarvis-emitter';
+
+const sensor = createEmitter(
+  { done: doneType<SensorReading>(), status: event<SensorStatus>() },
+  { label: 'SensorService' },
+);
+
+registry.list();
+// [{ label: 'SensorService',
+//    events: ['done','error','always','catch','tap','status'],
+//    listeners: { /* per-event counts */ } }]
+
+registry.find('Sensor');            // by label substring
+registry.find({ event: 'status' }); // by event name
+
+registry.onEmit((e) => {
+  console.log(`[${e.label}] ${e.event}`, e.data);
+});
+```
+
+Internally uses `WeakRef` — garbage-collected emitters drop out of the list, no leaks. Call `registry.disable()` to make every method a no-op (zero overhead in production); `registry.enable()` / `registry.clear()` for tests.
+
+## Unhandled Exceptions
+
+If a listener on `catch` itself throws, the exception is dispatched to global handlers:
+
+```ts
+JarvisEmitter.onUnhandledException((err) => {
+  console.error('unhandled in catch:', err);
+});
+```
+
+Pair with `offUnhandledException` to detach.
+
+## v3 → v4 Migration
+
+| v3                                           | v4                                                       |
+| -------------------------------------------- | -------------------------------------------------------- |
+| `new JarvisEmitter().extend({ name, role })` | `createEmitter({ name: event<T>() })`                    |
+| `.extend(...)` chaining                      | Single schema object at creation                         |
+| `JarvisEmitter.role.event` / `.notify`       | `event()` / `notify()` helpers                           |
+| `emitter.call.done(v)`                       | `emitter.emit.done(v)`                                   |
+| `emitter.on.done(cb)` returning `this`       | Returns an unsubscribe function                          |
+| `middleware.x((next, v) => next(v))`         | `transform.x((v) => v)` — pure return, composable        |
+| `payload<T>()` / `withType<T>()`             | `event<T>()` / `doneType<T>()` / `errorType<T>()`        |
+| `require('jarvis-emitter')` (CJS)            | `import { ... } from 'jarvis-emitter'` (ESM only)        |
+| Dynamic props (`emitter.sensorData`)         | Use `on` / `emit` / `off` namespaces                     |
+| `description` field on descriptors           | Removed                                                  |
+| `observe` role                               | Removed — use `event` or `notify`                        |
 
 ## License
 
