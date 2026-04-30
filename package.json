@@ -1,12 +1,12 @@
 {
 	"name": "jarvis-emitter",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"description": "Jarvis Emitter",
 	"main": "index",
 	"typings": "index",
 	"scripts": {
 		"test": "mocha test/test.functionality.js",
-		"test:types": "tsc --noEmit test/test.types.ts"
+		"test:types": "tsc --noEmit"
 	},
 	"author": "mce",
 	"dependencies": {
