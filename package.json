@@ -1,6 +1,6 @@
 {
 	"name": "jarvis-emitter",
-	"version": "3.0.1",
+	"version": "3.0.2",
 	"description": "Jarvis Emitter",
 	"main": "index",
 	"typings": "index",
@@ -21,6 +21,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/mceSystems/jarvis-emitter"
+		"url": "git+https://github.com/mceSystems/jarvis-emitter.git"
 	}
 }
