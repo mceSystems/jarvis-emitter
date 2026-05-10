@@ -310,6 +310,53 @@ class ServiceError extends Error { code = 0; }
 	>>;
 }
 
+// ─── 16b. payload<T>(), withType<T>(), and class-level Interfaces all agree ──
+// Regression: previously `payload<undefined>()` collapsed to `void` because
+// the descriptor matched the no-`emittedType` overload (`emittedType?: never`
+// silently accepts `undefined`). All three forms of expressing a payload type
+// must now yield the same type — including for `undefined`.
+
+{
+	// Form 1: withType<T>() chained
+	const withTypeUndef = new JarvisEmitter<void, Error>()
+		.withType<undefined>().extend({ name: "u1", role: Role.event });
+
+	type _withTypeUndef = Assert<AssertEqual<
+		Parameters<Parameters<typeof withTypeUndef.on.u1>[0]>[0],
+		undefined
+	>>;
+
+	// Form 2: payload<T>() in the descriptor's emittedType
+	const payloadUndef = new JarvisEmitter<void, Error>()
+		.extend({ name: "u2", role: Role.event, emittedType: payload<undefined>() });
+
+	type _payloadUndef = Assert<AssertEqual<
+		Parameters<Parameters<typeof payloadUndef.on.u2>[0]>[0],
+		undefined
+	>>;
+
+	// Form 3: class-level Interfaces declaration
+	interface UndefInterfaces extends DefaultInterfaces<void, Error> {
+		u3: undefined;
+	}
+	const interfaceUndef = new JarvisEmitter<void, Error, UndefInterfaces>()
+		.extend({ name: "u3", role: Role.event });
+
+	type _interfaceUndef = Assert<AssertEqual<
+		Parameters<Parameters<typeof interfaceUndef.on.u3>[0]>[0],
+		undefined
+	>>;
+
+	// Boundary: no `emittedType`, no `withType`, no class-level type — falls back to `void`.
+	const voidFallback = new JarvisEmitter<void, Error>()
+		.extend({ name: "u4", role: Role.event });
+
+	type _voidFallback = Assert<AssertEqual<
+		Parameters<Parameters<typeof voidFallback.on.u4>[0]>[0],
+		void
+	>>;
+}
+
 {
 	// Chained return values carry extended interface; assigning to a `const` and calling
 	// `.extend()` on the same variable does not update the variable's type (TS limitation).

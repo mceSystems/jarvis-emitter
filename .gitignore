@@ -1,1 +1,19 @@
 node_modules
+dist
+
+# IDE / editor
+.idea/
+.vscode/
+.vs/
+.zed/
+.fleet/
+*.iml
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
