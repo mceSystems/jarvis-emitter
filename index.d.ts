@@ -156,13 +156,19 @@ declare namespace JarvisEmitter {
 
 	/**
 	 * Descriptor without `emittedType` — use {@link payload} or {@link JarvisEmitter#withType} for payload typing.
+	 *
+	 * `emittedType` is intentionally absent: declaring it as `emittedType?: never`
+	 * silently accepted `emittedType: undefined` (from `payload<undefined>()`),
+	 * collapsing the payload to `void` instead of `undefined`. Leaving the field
+	 * out forces excess-property checking to push descriptors carrying an explicit
+	 * `emittedType` onto the `Property<K, V>` overload, so `payload<T>()` and
+	 * `withType<T>()` produce the same payload type for every `T`.
 	 */
 	interface PropertyDescriptor<Name extends string> {
 		name: Name;
 		role: Role.event | Role.notify | Role.observe | Role.start;
 		sticky?: boolean;
 		stickyLast?: boolean;
-		emittedType?: never;
 	}
 
 	/**
